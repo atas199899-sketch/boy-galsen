@@ -1,0 +1,128 @@
+{
+  "npcs": [
+    {
+      "id": "adja_fatou",
+      "name": "Adja Fatou",
+      "near": "start",
+      "look": {"skin": "#4a2c1b", "top": "#8e44ad", "long_dress": true, "head_wrap": true, "wrap_color": "#f1c40f", "long_sleeves": true, "height": 1.66},
+      "idle": ["Nanga def, doomu ? Tout va bien à la maison ?", "Va saluer ta maman de ma part."]
+    },
+    {
+      "id": "tonton_moussa",
+      "name": "Tonton Moussa",
+      "near": "start",
+      "look": {"skin": "#3b2417", "top": "#ecf0f1", "long_dress": true, "long_sleeves": true, "height": 1.82},
+      "idle": ["Ça va, jeune homme ? Le travail paie, ne l'oublie jamais.", "Diam rek ! La paix seulement."]
+    },
+    {
+      "id": "mame_diarra",
+      "name": "Mame Diarra",
+      "near": "far",
+      "look": {"skin": "#5c3822", "top": "#16a085", "long_dress": true, "head_wrap": true, "wrap_color": "#c0392b", "long_sleeves": true, "height": 1.6},
+      "idle": ["Que Dieu te garde, mon petit."]
+    },
+    {
+      "id": "modou",
+      "name": "Modou le tailleur",
+      "near": "tailleur",
+      "look": {"skin": "#6e4529", "top": "#2c3e50", "height": 1.75},
+      "idle": ["La Tabaski approche, j'ai trop de commandes !"]
+    },
+    {
+      "id": "awa",
+      "name": "Awa",
+      "near": "place",
+      "look": {"skin": "#7d5134", "top": "#e84393", "bottom": "#1d1d1d", "height": 1.68},
+      "idle": ["Tu as vu le match hier ? Les Lions ont assuré !"]
+    },
+    {
+      "id": "ibou",
+      "name": "Ibou",
+      "near": "garage",
+      "look": {"skin": "#3b2417", "top": "#e67e22", "bottom": "#3b3b3b", "height": 1.8},
+      "idle": ["Un car rapide, ça se répare avec de la patience… et du fil de fer."]
+    }
+  ],
+  "missions": [
+    {
+      "id": "pain_du_matin",
+      "giver": "adja_fatou",
+      "title": "Le pain du matin",
+      "intro": ["Ah, te voilà ! Nanga def ?", "Va m'acheter deux baguettes à la boulangerie, s'il te plaît. Le petit-déjeuner attend !"],
+      "steps": [
+        {"type": "goto", "target": "boulangerie", "text": "Achète du pain à la boulangerie", "say": ["Le boulanger : « Deux baguettes bien chaudes. Ça fait 300 francs ! »"]},
+        {"type": "talk", "target": "adja_fatou", "text": "Rapporte le pain à Adja Fatou"}
+      ],
+      "outro": ["Jërëjëf, doomu ! Tiens, pour ta peine."],
+      "reward": 500
+    },
+    {
+      "id": "credit_awa",
+      "giver": "awa",
+      "title": "Du crédit pour Awa",
+      "requires": ["pain_du_matin"],
+      "intro": ["Hé ! Mon téléphone n'a plus de crédit et je dois appeler ma cousine à Thiès.", "Tu peux passer au télécentre m'en prendre ? Je te rembourse avec un bonus."],
+      "steps": [
+        {"type": "goto", "target": "telecentre", "text": "Prends du crédit au télécentre"},
+        {"type": "talk", "target": "awa", "text": "Apporte le crédit à Awa sur la place"}
+      ],
+      "outro": ["Merci ! Tu es un vrai boy Galsen."],
+      "reward": 1000
+    },
+    {
+      "id": "medicament_mame",
+      "giver": "tonton_moussa",
+      "title": "Le médicament de Mame Diarra",
+      "requires": ["pain_du_matin"],
+      "intro": ["Salam aleykoum. Mame Diarra, ma tante, a besoin de son médicament.", "Prends-le à la pharmacie et apporte-le chez elle. Fais vite, s'il te plaît."],
+      "steps": [
+        {"type": "goto", "target": "pharmacie", "text": "Récupère le médicament à la pharmacie", "say": ["Le pharmacien : « Voilà. Deux comprimés par jour, après le repas. »"]},
+        {"type": "talk", "target": "mame_diarra", "text": "Apporte le médicament à Mame Diarra", "say": ["Mame Diarra : « Que Dieu te bénisse, mon fils ! Dis à Moussa que je vais mieux. »"]},
+        {"type": "talk", "target": "tonton_moussa", "text": "Retourne voir Tonton Moussa"}
+      ],
+      "outro": ["Tu as bon cœur. Les gens du quartier comptent sur toi maintenant."],
+      "reward": 1500
+    },
+    {
+      "id": "boubou_tabaski",
+      "giver": "modou",
+      "title": "Le boubou de la Tabaski",
+      "requires": ["medicament_mame"],
+      "intro": ["J'ai fini le grand boubou de Tonton Moussa pour la Tabaski.", "Mais je n'ai plus de fil doré. Va m'en chercher à la boutique Keur Mame, puis livre le boubou."],
+      "steps": [
+        {"type": "goto", "target": "boutique", "text": "Achète du fil doré à la boutique"},
+        {"type": "talk", "target": "modou", "text": "Rapporte le fil à Modou", "say": ["Modou : « Parfait ! Deux minutes… Voilà, le boubou est prêt. »"]},
+        {"type": "talk", "target": "tonton_moussa", "text": "Livre le boubou à Tonton Moussa"}
+      ],
+      "outro": ["Masha Allah, quel beau travail ! Tu salueras Modou."],
+      "reward": 2000
+    },
+    {
+      "id": "piece_car_rapide",
+      "giver": "ibou",
+      "title": "La pièce du car rapide",
+      "requires": ["credit_awa"],
+      "intro": ["Le car rapide de mon oncle est en panne en plein quartier !", "Va au marché, un vendeur a la courroie qu'il me faut. Ramène-la vite."],
+      "steps": [
+        {"type": "goto", "target": "marche", "text": "Trouve la courroie au marché", "say": ["Le vendeur : « Une courroie ? J'ai exactement ce qu'il te faut, petit. »"]},
+        {"type": "talk", "target": "ibou", "text": "Rapporte la courroie à Ibou au garage"}
+      ],
+      "outro": ["Yow, tu es rapide ! Le car va pouvoir rouler ce soir."],
+      "reward": 2500
+    },
+    {
+      "id": "thieb_dimanche",
+      "giver": "adja_fatou",
+      "title": "Le thiéboudienne du dimanche",
+      "requires": ["boubou_tabaski", "piece_car_rapide"],
+      "intro": ["Aujourd'hui toute la famille vient manger.", "Il me faut du poisson et des légumes au marché, puis passe à la dibiterie dire à Pathé qu'on mangera chez lui ce soir."],
+      "steps": [
+        {"type": "goto", "target": "marche", "text": "Achète poisson et légumes au marché"},
+        {"type": "goto", "target": "dibiterie", "text": "Passe à la dibiterie Chez Pathé", "say": ["Pathé : « Dis à Adja que la dibi sera prête à 20 heures ! »"]},
+        {"type": "talk", "target": "adja_fatou", "text": "Rentre voir Adja Fatou"}
+      ],
+      "outro": ["Le meilleur thiéb du quartier, grâce à toi ! Viens manger avec nous."],
+      "reward": 3000
+    }
+  ]
+}

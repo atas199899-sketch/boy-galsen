@@ -1,0 +1,8 @@
+# Godot
+.godot/
+.import/
+*.translation
+export_presets.cfg
+/android/
+/build/
+*.tmp
