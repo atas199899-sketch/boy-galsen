@@ -11,17 +11,32 @@ var _body: Node3D
 var _phase := 0.0
 var _amp := 0.0
 var _glb_anim: AnimationPlayer = null
+var real = null   # personnage réaliste (real_character.gd) s'il est disponible
+
+const RealCharacter = preload("res://scripts/characters/real_character.gd")
 
 const SKIN_TONES := [Color("3b2417"), Color("4a2c1b"), Color("5c3822"), Color("6e4529"), Color("7d5134"), Color("8d5f3c")]
 const CLOTH := [Color("1f5fae"), Color("c0392b"), Color("f1c40f"), Color("2e8b57"), Color("8e44ad"), Color("e67e22"),
 	Color("ecf0f1"), Color("16a085"), Color("d35400"), Color("2c3e50"), Color("e84393"), Color("0f7a5a")]
 
 
-## look : skin, top, bottom (Color), long_dress (robe / boubou), head_wrap (foulard), height (m).
+## look : female, skin, top, bottom, shoes (Color), long_dress (robe / boubou), head_wrap (foulard),
+## wrap_color, wax (motif), hair, beard, height (m), realistic (false = corps simple).
 func build(look: Dictionary) -> void:
 	var glb_path: String = look.get("model", "")
 	if glb_path != "" and ResourceLoader.exists(glb_path):
 		_use_glb(glb_path)
+		return
+	if look.get("realistic", true) and RealCharacter.assets_available():
+		var l := look.duplicate()
+		if not l.has("style"):
+			if l.get("female", false):
+				l["style"] = "dress" if l.get("long_dress", false) else "casual"
+			else:
+				l["style"] = "boubou" if l.get("long_dress", false) else "casual"
+		real = RealCharacter.new()
+		add_child(real)
+		real.build(l)
 		return
 	var skin: Color = look.get("skin", SKIN_TONES.pick_random())
 	var top: Color = look.get("top", CLOTH.pick_random())
@@ -92,7 +107,10 @@ func build(look: Dictionary) -> void:
 
 
 ## speed en m/s : anime la marche (bras et jambes opposés) et le léger rebond.
-func animate(speed: float, delta: float) -> void:
+func animate(speed: float, delta: float, airborne := false) -> void:
+	if real:
+		real.play_state(speed, airborne)
+		return
 	if _glb_anim:
 		var anim := "idle"
 		if speed > 3.0:

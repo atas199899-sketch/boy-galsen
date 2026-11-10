@@ -4,7 +4,9 @@ Jeu en monde ouvert à la troisième personne : on incarne un jeune qui vit sa v
 
 Moteur : **Godot 4.3** (gratuit, open source). Plateformes visées : PC (Windows / Mac), Android, puis consoles.
 
-> État : prototype jouable (v0.1). Les personnages et les bâtiments sont encore provisoires : voir [docs/ASSETS.md](docs/ASSETS.md) pour passer à des modèles réalistes.
+> État : prototype jouable (v0.2). Les personnages sont de vrais modèles humains animés. Les bâtiments sont encore simplifiés : voir [docs/ASSETS.md](docs/ASSETS.md).
+
+![Passants dans une rue du quartier](docs/captures/passants.png)
 
 ## Lancer le jeu
 
@@ -27,6 +29,7 @@ Moteur : **Godot 4.3** (gratuit, open source). Plateformes visées : PC (Windows
 
 - Un quartier de 6 × 6 pâtés de maisons inspiré de la Médina et du Plateau : immeubles bas aux couleurs chaudes, cours intérieures, toits-terrasses avec citernes et fers à béton, balcons et volets. On y trouve des boutiques avec enseignes (boulangerie, pharmacie, dibiterie, télécentre, tailleur…), le **Marché Teranga**, la **Place de la Teranga**, des taxis jaunes et noirs garés et des lampadaires.
 - Un cycle jour / nuit : soleil de Dakar, couchers de soleil orangés, fenêtres et lampadaires allumés la nuit.
+- **Des personnages humains réalistes et animés** (modèles et animations CC0 de Quaternius) : peaux noires de différents tons, cheveux, barbe. On voit des t-shirts, des chemises en wax, des grands boubous, des robes longues et des foulards. Les animations couvrent le repos, la marche, la course, le sprint et le saut.
 - Des passants qui marchent sur les trottoirs et traversent aux passages piétons.
 - 6 personnages du quartier (Adja Fatou, Tonton Moussa, Mame Diarra, Modou le tailleur, Awa, Ibou) et **6 missions** enchaînées, avec dialogues en français et expressions en wolof.
 - Une interface : argent en FCFA, heure, objectif, distance, boussole vers l'objectif, dialogues.
@@ -41,10 +44,14 @@ scripts/
   main.gd                  assemble le monde, gère le jour et la nuit
   core/game.gd             état global (autoload « Game ») : argent, sauvegarde, commandes
   world/city_generator.gd  génération du quartier
-  characters/              joueur, passants, personnages, corps provisoire animé
+  characters/              joueur, passants, personnages
+    real_character.gd      personnage réaliste : habillage, cheveux, animations
+    clothing.gdshader      vêtements dessinés sur le corps (t-shirt, pantalon, wax…)
+    humanoid.gd            choisit le modèle réaliste (ou un corps simple de secours)
   missions/                gestionnaire de missions
   ui/hud.gd                interface
 data/missions.json         personnages et missions (modifiable sans toucher au code)
+assets/                    modèles 3D, animations, crédits (assets/CREDITS.md)
 docs/                      vision, feuille de route, guide des modèles 3D
 tests/validate.gd          vérifie la cohérence des missions et de la ville
 ```

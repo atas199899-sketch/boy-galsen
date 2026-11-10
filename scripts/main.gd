@@ -43,6 +43,12 @@ func _ready() -> void:
 		add_child(p)
 		var female := randf() < 0.5
 		p.setup(city, city.random_sidewalk_node(), {
+			"female": female,
+			"top": Humanoid.CLOTH.pick_random(),
+			"bottom": [Color("26313d"), Color("1d1d1d"), Color("3b4a5c"), Color("5b4a3a"), Color("c9b28a")].pick_random(),
+			"wax": randf() < 0.3,
+			"pattern_color": Humanoid.CLOTH.pick_random(),
+			"wrap_color": Humanoid.CLOTH.pick_random(),
 			"long_dress": female and randf() < 0.7 or (not female and randf() < 0.25),
 			"head_wrap": female and randf() < 0.6,
 			"long_sleeves": randf() < 0.4,
@@ -73,6 +79,16 @@ func _parse_dev_args() -> void:
 			_capture_path = a.get_slice("=", 1)
 		elif a.begins_with("--yaw="):
 			player.yaw = float(a.get_slice("=", 1))
+		elif a == "--crowd":
+			# rassemble quelques passants devant la caméra (captures d'écran)
+			var k := 0
+			for n in get_children():
+				if n is Pedestrian and k < 8:
+					n.global_position = player.global_position + Vector3(-3.0 + (k % 4) * 2.0, 0.3, -4.0 - (k / 4) * 3.0)
+					n.wait = 30.0
+					k += 1
+		elif a.begins_with("--zoom="):
+			player.spring.spring_length = float(a.get_slice("=", 1))
 		elif a.begins_with("--pitch="):
 			player.pitch = float(a.get_slice("=", 1))
 		elif a == "--selftest":

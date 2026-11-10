@@ -1,8 +1,16 @@
 # Modèles 3D, textures et licences
 
-Le prototype construit les personnages et la ville en code, avec des formes simples. Pour qu'ils ressemblent à de **vraies personnes**, il faut de vrais modèles 3D animés. Le code est déjà prêt à les recevoir.
+## Ce qui est utilisé aujourd'hui (v0.2)
 
-## Personnage du joueur : la méthode la plus simple (Mixamo)
+- **Personnages** : *Universal Base Characters* de Quaternius (CC0), dans `assets/characters/quaternius/`. La version gratuite contient un homme et une femme (proportions « Superhero »), des coiffures et une barbe.
+- **Animations** : *Universal Animation Library* de Quaternius (CC0), dans `assets/animations/UAL1_Standard.glb`. Elle contient 43 animations sur le même squelette (repos, marche, jogging, sprint, saut, discussion, assis, ramasser…).
+- Les corps de base n'ont pas de vêtements. `scripts/characters/real_character.gd` et `clothing.gdshader` dessinent les vêtements sur le corps (t-shirt, pantalon, chaussures, motif wax) et ajoutent un pagne ou une robe longue, ou le bas d'un boubou. La peau est teintée dans différents tons de noir.
+
+Pour aller plus loin : la version payante *Source* du pack (sur quaternius.com) ajoute des morphologies « Regular » et « Teen », plus naturelles pour des passants. De vrais vêtements modélisés (boubous amples, pagnes, maillots) restent la prochaine étape, idéalement par un artiste.
+
+## Remplacer le personnage du joueur par un autre modèle
+
+### Avec Mixamo
 
 1. Crée un compte Adobe gratuit sur https://www.mixamo.com.
 2. Choisis un personnage, ou importe le tien (voir plus bas).

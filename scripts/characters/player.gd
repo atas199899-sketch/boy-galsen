@@ -40,7 +40,7 @@ func _ready() -> void:
 
 	model = Humanoid.new()
 	add_child(model)
-	model.build({"model": PLAYER_MODEL, "skin": Color("4a2c1b"), "top": Color("f0b93a"), "bottom": Color("2b3a55"), "height": 1.78})
+	model.build({"model": PLAYER_MODEL, "top": Color("f0b93a"), "bottom": Color("2b3a55"), "shoes": Color("e8e8e8"), "hair": "Hair_Buzzed", "beard": false, "height": 1.78})
 
 	cam_pivot = Node3D.new()
 	cam_pivot.position.y = 1.6
@@ -112,7 +112,7 @@ func _physics_process(delta: float) -> void:
 	var speed := Vector2(velocity.x, velocity.z).length()
 	if speed > 0.2:
 		model.rotation.y = lerp_angle(model.rotation.y, atan2(-velocity.x, -velocity.z), clampf(10.0 * delta, 0.0, 1.0))
-	model.animate(speed, delta)
+	model.animate(speed, delta, not is_on_floor() and absf(velocity.y) > 1.5)
 	_update_focus()
 
 

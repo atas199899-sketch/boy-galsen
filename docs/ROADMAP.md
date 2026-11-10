@@ -8,7 +8,8 @@
 - [x] Interface (argent, objectif, boussole, dialogues), sauvegarde
 
 ## v0.2 : réalisme visuel
-- [ ] Personnages réalistes, animés (Mixamo ou modèles commandés), voir ASSETS.md
+- [x] Personnages humains réalistes et animés (Quaternius, CC0) : vêtements, wax, boubous, robes, foulards
+- [ ] Vrais vêtements modélisés (boubous amples, pagnes, maillots) et morphologies plus naturelles
 - [ ] Textures photo pour les murs, le crépi, le sable et le bitume (Poly Haven, CC0)
 - [ ] Vraie forme des rues de Dakar à partir d'OpenStreetMap (Médina, Plateau)
 - [ ] Bâtiments modélisés : façades, portes en fer forgé, climatiseurs, enseignes peintes
