@@ -23,6 +23,9 @@ Moteur : **Godot 4.3** (gratuit, open source). Plateformes visées : PC (Windows
 | Courir | Maj | Clic stick gauche / RB |
 | Sauter | Espace | A |
 | Parler / continuer un dialogue | E ou clic | X |
+| Monter dans un véhicule / descendre | E (près d'un véhicule) | X |
+| Conduire : accélérer, freiner, tourner | Z / S, Q / D (ou flèches) | Stick gauche |
+| Frein à main | Espace | A |
 | Libérer la souris | Échap | Start |
 
 ## Ce qu'il y a déjà
@@ -33,6 +36,9 @@ Moteur : **Godot 4.3** (gratuit, open source). Plateformes visées : PC (Windows
 - **Des personnages humains réalistes et animés** (modèles et animations CC0 de Quaternius) : peaux noires de différents tons, cheveux, barbe. On voit des t-shirts, des chemises en wax, des grands boubous, des robes longues et des foulards. Les animations couvrent le repos, la marche, la course, le sprint et le saut.
 - Des passants qui marchent sur les trottoirs et traversent aux passages piétons.
 - 6 personnages du quartier (Adja Fatou, Tonton Moussa, Mame Diarra, Modou le tailleur, Awa, Ibou) et **6 missions** enchaînées, avec dialogues en français et expressions en wolof.
+- **Conduite** : on peut prendre n'importe quel véhicule garé, ou voler celui d'un conducteur (il est sorti de force et s'enfuit). Il y a une caméra de poursuite, un compteur de vitesse et des phares la nuit.
+- **Circulation automatique** : taxis, cars rapides, clandos, Ndiaga Ndiaye et mobylettes roulent à droite dans les vraies rues. Ils choisissent leur chemin aux carrefours et freinent devant les piétons.
+- **Vie de rue** : des passants discutent en petits groupes, avec gestes et bulles en wolof et en français. Ils saluent le joueur qui passe.
 - Une interface : argent en FCFA, heure, objectif, distance, boussole vers l'objectif, dialogues.
 - Une sauvegarde automatique (argent, missions terminées, heure).
 
@@ -80,6 +86,12 @@ Vérifie ensuite que tout est cohérent :
 
 ```
 godot --headless --path . --script res://tests/validate.gd
+```
+
+Pour tester la conduite, la circulation et le vol de voiture :
+
+```
+godot --headless --path . -- --drivetest
 ```
 
 Pour jouer automatiquement la première mission et vérifier qu'elle se termine bien :

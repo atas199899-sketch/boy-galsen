@@ -4,6 +4,7 @@ extends Node3D
 
 const City = preload("res://scripts/world/city_generator.gd")
 const OsmCity = preload("res://scripts/world/osm_city.gd")
+const Traffic = preload("res://scripts/vehicles/traffic.gd")
 const Player = preload("res://scripts/characters/player.gd")
 const Pedestrian = preload("res://scripts/characters/pedestrian.gd")
 const Hud = preload("res://scripts/ui/hud.gd")
@@ -61,6 +62,14 @@ func _ready() -> void:
 			"height": randf_range(1.58, 1.72) if female else randf_range(1.68, 1.92),
 		})
 
+	if "drive_nodes" in city and not city.drive_nodes.is_empty():
+		var traffic := Traffic.new()
+		traffic.name = "Circulation"
+		add_child(traffic)
+		traffic.setup(city, player)
+
+	_make_street_chats()
+
 	missions = MissionManager.new()
 	add_child(missions)
 	missions.setup(city, player, hud)
@@ -75,6 +84,7 @@ func _ready() -> void:
 
 var _capture_path := ""
 var _capture_frames := 0
+var _capture_at := 150
 
 
 func _parse_dev_args() -> void:
@@ -83,6 +93,8 @@ func _parse_dev_args() -> void:
 			Game.time_of_day = float(a.get_slice("=", 1))
 		elif a.begins_with("--capture="):
 			_capture_path = a.get_slice("=", 1)
+		elif a.begins_with("--capframe="):
+			_capture_at = int(a.get_slice("=", 1))
 		elif a.begins_with("--yaw="):
 			player.yaw = float(a.get_slice("=", 1))
 		elif a == "--debughair":
@@ -121,6 +133,8 @@ func _parse_dev_args() -> void:
 			player.spring.spring_length = float(a.get_slice("=", 1))
 		elif a.begins_with("--pitch="):
 			player.pitch = float(a.get_slice("=", 1))
+		elif a == "--drivetest":
+			_drivetest.call_deferred()
 		elif a == "--selftest":
 			_selftest.call_deferred()
 		elif a.begins_with("--goto="):
@@ -133,11 +147,31 @@ func _physics_process(_delta: float) -> void:
 	if _capture_path == "":
 		return
 	_capture_frames += 1
-	if _capture_frames == 150:
+	if _capture_frames == _capture_at:
 		var img := get_viewport().get_texture().get_image()
 		img.save_png(ProjectSettings.globalize_path(_capture_path))
 		print("Capture : ", _capture_path)
 		get_tree().quit()
+
+
+## Petits groupes de passants qui discutent sur les trottoirs autour du point de départ.
+func _make_street_chats() -> void:
+	var peds: Array = get_tree().get_nodes_in_group("pedestrian")
+	peds.shuffle()
+	var k := 0
+	var taken: Array = []
+	for g in 7:
+		var size := 2 if randf() < 0.6 else 3
+		if k + size > peds.size():
+			break
+		var center: Vector3 = city.sidewalk_point_near(city.spawn_point, 12.0, 160.0, taken, 12.0) if city.has_method("random_sidewalk_node_near") else city.sidewalk_point_near(city.spawn_point, 12.0, 160.0)
+		taken.append(center)
+		for m in size:
+			var p = peds[k]
+			k += 1
+			var a := TAU * m / size + randf() * 0.3
+			p.global_position = center + Vector3(cos(a), 0.0, sin(a)) * 0.75 + Vector3(0, 0.2, 0)
+			p.start_chat(center, randf_range(60.0, 240.0))
 
 
 func _build_environment() -> void:
@@ -231,4 +265,73 @@ func _selftest() -> void:
 	Game.money = saved_money
 	Game.completed.assign(saved_done)
 	Game.save_game()
+	get_tree().quit(0 if ok else 1)
+
+
+## Test de conduite : monte dans le véhicule le plus proche, accélère, vérifie la circulation.
+func _drivetest() -> void:
+	await get_tree().create_timer(2.0).timeout
+	var best = null
+	var bd := 1e9
+	var all_v := get_tree().get_nodes_in_group("vehicle")
+	for v in all_v:
+		if v.ai != null or v.kind == "jakarta":
+			continue
+		var d: float = v.global_position.distance_to(player.global_position)
+		if d >= bd:
+			continue
+		# il faut de la place devant (pas de véhicule garé juste devant)
+		var f: Vector3 = v.forward()
+		var clear := true
+		for o in all_v:
+			if o == v:
+				continue
+			var rel: Vector3 = o.global_position - v.global_position
+			var ahead := rel.x * f.x + rel.z * f.z
+			if ahead > 0.0 and ahead < 25.0 and absf(rel.x * f.z - rel.z * f.x) < 2.5:
+				clear = false
+				break
+		if clear:
+			bd = d
+			best = v
+	var traffic = get_node_or_null("Circulation")
+	var ai_start := {}
+	if traffic:
+		for c in traffic.cars:
+			ai_start[c] = c.global_position
+	player.global_position = best.global_position + Vector3(0, 1, 0)
+	player.enter_vehicle(best)
+	var start: Vector3 = best.global_position
+	Input.action_press("move_forward")
+	await get_tree().create_timer(4.0).timeout
+	var top_speed: float = best.speed
+	Input.action_release("move_forward")
+	Input.action_press("move_left")
+	Input.action_press("move_forward")
+	await get_tree().create_timer(1.5).timeout
+	Input.action_release("move_left")
+	Input.action_release("move_forward")
+	var moved: float = best.global_position.distance_to(start)
+	player.exit_vehicle()
+	var ai_moving := 0
+	if traffic:
+		for c in traffic.cars:
+			if is_instance_valid(c) and ai_start.has(c) and c.global_position.distance_to(ai_start[c]) > 8.0:
+				ai_moving += 1
+	var n_ai: int = traffic.cars.size() if traffic else 0
+	# vol d'une voiture de la circulation
+	var jacked := false
+	var fled := false
+	if traffic and not traffic.cars.is_empty():
+		var target = traffic.cars[0]
+		player.global_position = target.global_position - target.global_transform.basis.z * (target.size.z * 0.5 + 1.0) + Vector3(0, 0.5, 0)
+		target.interact(player)
+		await get_tree().create_timer(1.5).timeout
+		jacked = player.vehicle == target and target.ai == null
+		for p in get_tree().get_nodes_in_group("pedestrian"):
+			if p.flee_time > 0.0:
+				fled = true
+		player.exit_vehicle()
+	var ok: bool = top_speed > 5.0 and moved > 10.0 and ai_moving >= 3 and jacked and fled
+	print("DRIVETEST véhicule=%s vitesse_max=%.1f m/s distance=%.1f m circulation=%d dont en mouvement=%d vol=%s conducteur_enfui=%s → %s" % [best.kind, top_speed, moved, n_ai, ai_moving, jacked, fled, "OK" if ok else "ÉCHEC"])
 	get_tree().quit(0 if ok else 1)

@@ -176,7 +176,15 @@ static func mat(key: String) -> StandardMaterial3D:
 
 
 ## Allume les phares la nuit (0 = jour, 1 = nuit).
+static var _night_level := 0.0
+
+
+static func night_level() -> float:
+	return _night_level
+
+
 static func set_night(night: float) -> void:
+	_night_level = night
 	mat("head").emission_energy_multiplier = lerpf(0.3, 3.0, night)
 	mat("tail").emission_energy_multiplier = lerpf(0.4, 2.0, night)
 

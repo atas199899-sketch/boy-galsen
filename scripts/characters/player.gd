@@ -23,13 +23,15 @@ var mouse_sensitivity := 0.0025
 var stick_sensitivity := 2.6
 var controls_locked := false
 var hud = null
-var focus: Node = null  # personnage avec qui on peut interagir
+var focus: Node = null  # personnage ou véhicule avec qui on peut interagir
+var vehicle = null      # véhicule conduit
+var _cam_free := 0.0    # temps pendant lequel la souris garde la main sur la caméra
 
 
 func _ready() -> void:
 	add_to_group("player")
 	collision_layer = 2
-	collision_mask = 1 | 2
+	collision_mask = 1 | 2 | 4
 	floor_snap_length = 0.3
 	var col := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
@@ -74,6 +76,7 @@ func _capture_mouse(on: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		_cam_free = 1.5
 		yaw -= event.relative.x * mouse_sensitivity
 		pitch = clampf(pitch - event.relative.y * mouse_sensitivity, -1.2, 0.55)
 	elif event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
@@ -87,14 +90,21 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("interact"):
 		if hud and hud.is_dialogue_open():
 			hud.advance_dialogue()
+		elif vehicle:
+			exit_vehicle()
 		elif focus and focus.has_method("interact"):
 			focus.interact(self)
 
 
 func _physics_process(delta: float) -> void:
 	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+	if look.length() > 0.1:
+		_cam_free = 1.5
 	yaw -= look.x * stick_sensitivity * delta
 	pitch = clampf(pitch - look.y * stick_sensitivity * delta, -1.2, 0.55)
+	if vehicle:
+		_drive_camera(delta)
+		return
 	cam_pivot.rotation = Vector3(pitch, yaw, 0.0)
 
 	var locked: bool = controls_locked or (hud != null and hud.is_dialogue_open())
@@ -132,3 +142,54 @@ func _update_focus() -> void:
 		focus = best
 	if hud:
 		hud.set_prompt(focus.get_prompt() if focus and not hud.is_dialogue_open() else "")
+
+
+# ---------------------------------------------------------------- conduite
+
+func enter_vehicle(car) -> void:
+	vehicle = car
+	car.take_control(self)
+	collision_layer = 0
+	collision_mask = 0
+	velocity = Vector3.ZERO
+	model.visible = false
+	spring.spring_length = clampf(car.size.x * 1.3 + 2.0, 4.5, 11.0)
+	spring.position.x = 0.0
+	cam_pivot.position.y = car.size.y + 0.5
+	pitch = -0.22
+	if hud:
+		hud.set_prompt("")
+
+
+func exit_vehicle() -> void:
+	var car = vehicle
+	if car == null:
+		return
+	car.release_control()
+	vehicle = null
+	var left: Vector3 = -car.global_transform.basis.z.normalized()
+	var spot: Vector3 = car.global_position + left * (car.size.z * 0.5 + 0.8) + Vector3(0, 0.3, 0)
+	global_position = spot
+	collision_layer = 2
+	collision_mask = 1 | 2 | 4
+	model.visible = true
+	spring.spring_length = 3.0
+	spring.position.x = 0.45
+	cam_pivot.position.y = 1.6
+	if hud:
+		hud.set_speed(-1)
+
+
+func _drive_camera(delta: float) -> void:
+	global_position = vehicle.global_position
+	var f: Vector3 = vehicle.forward()
+	_cam_free -= delta
+	if _cam_free <= 0.0 and absf(vehicle.speed) > 0.5:
+		var behind := atan2(-f.x, -f.z) if vehicle.speed >= 0.0 else atan2(f.x, f.z)
+		yaw = lerp_angle(yaw, behind, clampf(3.0 * delta, 0.0, 1.0))
+		pitch = lerpf(pitch, -0.22, clampf(2.0 * delta, 0.0, 1.0))
+	cam_pivot.rotation = Vector3(pitch, yaw, 0.0)
+	camera.fov = lerpf(camera.fov, 68.0 + clampf(absf(vehicle.speed) - 8.0, 0.0, 22.0) * 0.6, clampf(2.0 * delta, 0.0, 1.0))
+	if hud:
+		hud.set_speed(vehicle.kmh())
+		hud.set_prompt("[E] Descendre" if absf(vehicle.speed) < 2.0 else "")

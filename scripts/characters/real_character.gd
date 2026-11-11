@@ -188,24 +188,6 @@ func _add_drape(look: Dictionary) -> void:
 	var style: String = look.get("style", "casual")
 	if style != "dress" and style != "boubou":
 		return
-	var pelvis := skeleton.find_bone("pelvis")
-	if pelvis < 0:
-		return
-	var att := BoneAttachment3D.new()
-	att.bone_idx = pelvis
-	skeleton.add_child(att)
-	var waist := 0.535 * 1.82
-	var hem := 0.12 if style == "dress" else 0.3
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.19 if style == "dress" else 0.22
-	cm.bottom_radius = 0.3 if style == "dress" else 0.36
-	cm.height = waist - hem
-	cm.radial_segments = 20
-	cm.rings = 3
-	cm.cap_top = false
-	cm.cap_bottom = false
-	var mi := MeshInstance3D.new()
-	mi.mesh = cm
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = _drape_color(look)
 	mat.roughness = 0.85
@@ -214,8 +196,59 @@ func _add_drape(look: Dictionary) -> void:
 		mat.albedo_texture = _wax_texture(_drape_color(look), look.get("pattern_color", Color("f1c40f")))
 		mat.albedo_color = Color.WHITE
 		mat.uv1_scale = Vector3(6, 3, 1)
+	if style == "dress":
+		# pagne / robe longue : du bassin aux chevilles
+		var waist := 0.535 * 1.82
+		_drape_cone("pelvis", 0.19, 0.3, 0.12, waist, 1.0, mat)
+	else:
+		# grand boubou : tombe des épaules jusqu'aux mollets, ample, couvre les bras
+		var shoulders := 0.8 * 1.82
+		_drape_cone("spine_03", 0.3, 0.62, 0.32, shoulders, 0.72, mat)
+		# encolure brodée
+		var collar := StandardMaterial3D.new()
+		collar.albedo_color = mat.albedo_color.darkened(0.25) if not look.get("wax", false) else Color("f1c40f")
+		_drape_cone("spine_03", 0.13, 0.31, shoulders - 0.04, shoulders + 0.03, 0.72, collar)
+		# bonnet (kufi)
+		var head := skeleton.find_bone("Head")
+		if head >= 0:
+			var att := BoneAttachment3D.new()
+			att.bone_idx = head
+			skeleton.add_child(att)
+			var kufi := MeshInstance3D.new()
+			var km := CylinderMesh.new()
+			km.top_radius = 0.085
+			km.bottom_radius = 0.098
+			km.height = 0.1
+			kufi.mesh = km
+			var kmat := StandardMaterial3D.new()
+			kmat.albedo_color = look.get("kufi", mat.albedo_color if not look.get("wax", false) else Color("ecf0f1"))
+			kmat.roughness = 0.8
+			kufi.material_override = kmat
+			kufi.transform = skeleton.get_bone_global_rest(head).affine_inverse() * Transform3D(Basis(), Vector3(0, 1.73, -0.005))
+			att.add_child(kufi)
+
+
+## Tissu évasé (tronc de cône sans fond) accroché à un os, de y_bas à y_haut (mètres, pose de repos).
+func _drape_cone(bone_name: String, r_top: float, r_bottom: float, y_bottom: float, y_top: float, depth_scale: float, mat: Material) -> void:
+	var bone := skeleton.find_bone(bone_name)
+	if bone < 0:
+		return
+	var att := BoneAttachment3D.new()
+	att.bone_idx = bone
+	skeleton.add_child(att)
+	var cm := CylinderMesh.new()
+	cm.top_radius = r_top
+	cm.bottom_radius = r_bottom
+	cm.height = y_top - y_bottom
+	cm.radial_segments = 24
+	cm.rings = 4
+	cm.cap_top = false
+	cm.cap_bottom = false
+	var mi := MeshInstance3D.new()
+	mi.mesh = cm
 	mi.material_override = mat
-	mi.transform = skeleton.get_bone_global_rest(pelvis).affine_inverse() * Transform3D(Basis(), Vector3(0, hem + cm.height * 0.5, 0.01))
+	var t := Transform3D(Basis().scaled(Vector3(1.0, 1.0, depth_scale)), Vector3(0, y_bottom + cm.height * 0.5, 0.01))
+	mi.transform = skeleton.get_bone_global_rest(bone).affine_inverse() * t
 	att.add_child(mi)
 
 

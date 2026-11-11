@@ -182,3 +182,9 @@ func _box(size: Vector3, m: Material) -> MeshInstance3D:
 	mi.mesh = bm
 	mi.material_override = m
 	return mi
+
+
+## Gestes de discussion (animation « Idle_Talking » du personnage réaliste).
+func set_talking(v: bool) -> void:
+	if real:
+		real.talking = v

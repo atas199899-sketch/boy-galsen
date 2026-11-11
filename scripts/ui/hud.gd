@@ -7,6 +7,7 @@ var _clock: Label
 var _objective: Label
 var _distance: Label
 var _prompt: Label
+var _speed: Label
 var _toast: Label
 var _toast_time := 0.0
 var _dialog: PanelContainer
@@ -56,6 +57,15 @@ func _ready() -> void:
 	_prompt.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_prompt.position.y -= 60
 	add_child(_prompt)
+
+	_speed = _text(40, Color.WHITE)
+	_speed.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_speed.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_speed.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_speed.position += Vector2(-30, -30)
+	_speed.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_speed.visible = false
+	add_child(_speed)
 
 	_toast = _text(34, Color.WHITE)
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -148,6 +158,13 @@ func set_distance(d: float) -> void:
 
 func set_compass_target(p: Vector3) -> void:
 	_compass_target = p
+
+
+## Compteur de vitesse (km/h) ; -1 pour le cacher.
+func set_speed(kmh: int) -> void:
+	_speed.visible = kmh >= 0
+	if kmh >= 0:
+		_speed.text = "%d km/h" % kmh
 
 
 func set_prompt(t: String) -> void:

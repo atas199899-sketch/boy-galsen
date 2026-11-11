@@ -8,6 +8,7 @@ extends Node3D
 ## sidewalk_links, spawn_point, random_sidewalk_node(), sidewalk_point_near(), set_night().
 
 const Vehicles = preload("res://scripts/world/vehicles.gd")
+const Car = preload("res://scripts/vehicles/car.gd")
 const MAP_PATH := "res://data/map/dakar_centre.json"
 const BUILDING_SHADER := preload("res://scripts/world/building.gdshader")
 const CHUNK := 300.0
@@ -18,6 +19,9 @@ const JUNCTION_CUT := 8.0  # on interrompt les trottoirs aux carrefours
 const MAX_VEHICLES := 260
 const LAMP_LIGHTS := 18    # lampes réellement éclairantes autour du joueur
 
+var drive_nodes: Array[Vector3] = []   # réseau routier pour la circulation automatique
+var drive_links: Array = []
+var _drive_index := {}
 var places := {}
 var place_names := {}
 var sidewalk_nodes: Array[Vector3] = []
@@ -273,6 +277,22 @@ func _build_roads() -> void:
 				var a0 := TAU * k / 10.0
 				var a1 := TAU * (k + 1) / 10.0
 				c[mat_buf].tri(_v(p, y - 0.001), _v(p + Vector2(cos(a0), sin(a0)) * hw, y - 0.001), _v(p + Vector2(cos(a1), sin(a1)) * hw, y - 0.001), Vector3.UP)
+		if t in WITH_SIDEWALK:
+			var prev := -1
+			for p in pts:
+				var key := Vector2i(roundi(p.x * 0.5), roundi(p.y * 0.5))
+				var idx: int = _drive_index.get(key, -1)
+				if idx < 0:
+					idx = drive_nodes.size()
+					_drive_index[key] = idx
+					drive_nodes.append(Vector3(p.x, 0.05, p.y))
+					drive_links.append([])
+				if prev >= 0 and prev != idx:
+					if not drive_links[prev].has(idx):
+						drive_links[prev].append(idx)
+					if not drive_links[idx].has(prev):
+						drive_links[idx].append(prev)
+				prev = idx
 		# marquage central pour les grandes rues
 		if hw >= 4.5 and t != "pedestrian":
 			_dashes(pts, y + 0.004)
@@ -415,7 +435,7 @@ func _sidewalk(seg: PackedVector2Array, hw: float, side: float, ends: Array, roa
 	ends.append(first + count - 1)
 	# véhicules garés le long du trottoir (côté chaussée)
 	if road_type in ["residential", "tertiary", "unclassified", "secondary", "living_street"] and _vehicle_count < MAX_VEHICLES:
-		var park_line := _offset_line(seg, side * (hw - 1.15))
+		var park_line := _offset_line(seg, side * (hw + 0.3))   # à cheval sur le trottoir, comme à Dakar
 		var pcum := _cumulative(park_line)
 		var dp := rng.randf_range(4.0, 12.0)
 		while dp < pcum[-1] - 6.0 and _vehicle_count < MAX_VEHICLES:
@@ -424,7 +444,7 @@ func _sidewalk(seg: PackedVector2Array, hw: float, side: float, ends: Array, roa
 				var q := _at(park_line, pcum, dp + 1.0)
 				var dir := q - p
 				var kind := _pick_vehicle()
-				_park_vehicles.append([Vector3(p.x, 0.04, p.y), atan2(-dir.y, dir.x) + (PI if side < 0 else 0.0), kind])
+				_park_vehicles.append([Vector3(p.x, 0.16, p.y), atan2(-dir.y, dir.x) + (PI if side < 0 else 0.0), kind])
 				_vehicle_count += 1
 				dp += Vehicles.size_of(kind).x + rng.randf_range(1.0, 14.0)
 			else:
@@ -501,6 +521,9 @@ func _build_buildings() -> void:
 			poly.remove_at(poly.size() - 1)
 		if poly.size() < 3:
 			continue
+		poly = _remove_spikes(poly)
+		if poly.size() < 3:
+			continue
 		var area := absf(_signed_area(poly))
 		var perim := 0.0
 		for i in poly.size():
@@ -556,6 +579,26 @@ func _build_buildings() -> void:
 			landmarks.append([b.n if b.has("n") else "Marché", Vector3(center.x, h + 6.0, center.y)])
 		elif b.has("n") and area > 600.0:
 			landmarks.append([b.n, Vector3(center.x, h + 4.0, center.y)])
+
+
+## Retire les « pointes » des contours (sommets où le mur fait demi-tour sur lui-même) :
+## ce sont des erreurs de cartographie qui produisent des murs en lame jusque dans la rue.
+func _remove_spikes(poly: PackedVector2Array) -> PackedVector2Array:
+	var changed := true
+	while changed and poly.size() > 3:
+		changed = false
+		var n := poly.size()
+		for i in n:
+			var a := poly[(i - 1 + n) % n]
+			var b := poly[i]
+			var c := poly[(i + 1) % n]
+			var u := a - b
+			var v := c - b
+			if u.length() < 0.05 or v.length() < 0.05 or u.normalized().dot(v.normalized()) > 0.9:
+				poly.remove_at(i)
+				changed = true
+				break
+	return poly
 
 
 func _signed_area(p: PackedVector2Array) -> float:
@@ -736,22 +779,14 @@ func _build_props() -> void:
 	vrng.seed = 77
 	for v in _park_vehicles:
 		var node := Vehicles.make(v[2], vrng)
-		node.position = v[0]
-		node.rotation.y = v[1]
 		if not Vehicles.MODELS.has(v[2]):
 			for mi in node.find_children("*", "GeometryInstance3D", true, false):
 				mi.visibility_range_end = 260.0
-		var body := StaticBody3D.new()
-		body.collision_layer = 1
-		var cs := CollisionShape3D.new()
-		var box := BoxShape3D.new()
-		var sz := Vehicles.size_of(v[2])
-		box.size = sz
-		cs.shape = box
-		cs.position = Vector3(0, sz.y * 0.5, 0)
-		body.add_child(cs)
-		node.add_child(body)
-		add_child(node)
+		var car := Car.new()
+		car.setup(v[2], node, Vehicles.size_of(v[2]))
+		car.position = v[0]
+		car.rotation.y = v[1]
+		add_child(car)
 
 
 # ---------------------------------------------------------------- lumière des lampadaires
