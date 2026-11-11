@@ -10,8 +10,10 @@
 ## v0.2 : réalisme visuel
 - [x] Personnages humains réalistes et animés (Quaternius, CC0) : vêtements, wax, boubous, robes, foulards
 - [ ] Vrais vêtements modélisés (boubous amples, pagnes, maillots) et morphologies plus naturelles
-- [ ] Textures photo pour les murs, le crépi, le sable et le bitume (Poly Haven, CC0)
-- [ ] Vraie forme des rues de Dakar à partir d'OpenStreetMap (Médina, Plateau)
+- [x] Textures photo pour les murs, le sable, les pavés et le bitume (Poly Haven, CC0)
+- [x] Vrai centre de Dakar à partir d'OpenStreetMap (Plateau, Médina, Fann, Colobane)
+- [ ] Étendre aux autres quartiers (Point E, Mermoz, Ouakam, Yoff, Parcelles, Pikine…) avec chargement par zones
+- [ ] Véhicules en circulation (taxis, cars rapides, Ndiaga Ndiaye)
 - [ ] Bâtiments modélisés : façades, portes en fer forgé, climatiseurs, enseignes peintes
 - [ ] Sable et poussière sur les trottoirs, déchets, charrettes, moutons
 - [ ] Optimisation : LOD, culling, bâtiments fusionnés (indispensable pour Android)

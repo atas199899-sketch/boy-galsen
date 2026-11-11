@@ -3,6 +3,7 @@ extends CharacterBody3D
 ## s'arrête parfois (pour discuter, regarder une boutique…).
 
 const Humanoid = preload("res://scripts/characters/humanoid.gd")
+const Step = preload("res://scripts/core/step.gd")
 
 var city = null
 var node_id := -1
@@ -59,6 +60,7 @@ func _physics_process(delta: float) -> void:
 	velocity.x = hv.x
 	velocity.z = hv.z
 	velocity.y = 0.0 if is_on_floor() else velocity.y - gravity * delta
+	Step.try_step(self, hv, delta)
 	move_and_slide()
 	var sp := Vector2(velocity.x, velocity.z).length()
 	if sp > 0.1:

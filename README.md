@@ -27,7 +27,8 @@ Moteur : **Godot 4.3** (gratuit, open source). Plateformes visées : PC (Windows
 
 ## Ce qu'il y a déjà
 
-- Un quartier de 6 × 6 pâtés de maisons inspiré de la Médina et du Plateau : immeubles bas aux couleurs chaudes, cours intérieures, toits-terrasses avec citernes et fers à béton, balcons et volets. On y trouve des boutiques avec enseignes (boulangerie, pharmacie, dibiterie, télécentre, tailleur…), le **Marché Teranga**, la **Place de la Teranga**, des taxis jaunes et noirs garés et des lampadaires.
+- **Le vrai centre de Dakar**, construit à partir d'OpenStreetMap : 6 583 bâtiments à leur vraie forme, 1 766 rues, la côte et l'océan, la Place de l'Indépendance, Sandaga, les mosquées avec dôme et minaret, des parcs. On y trouve aussi de vrais commerces, des trottoirs qu'on peut monter, des lampadaires qui éclairent la nuit et 260 véhicules garés (taxis jaunes et noirs, cars rapides, Ndiaga Ndiaye).
+- (Ancien générateur de secours) un quartier de 6 × 6 pâtés de maisons inspiré de la Médina et du Plateau : immeubles bas aux couleurs chaudes, cours intérieures, toits-terrasses avec citernes et fers à béton, balcons et volets. On y trouve des boutiques avec enseignes (boulangerie, pharmacie, dibiterie, télécentre, tailleur…), le **Marché Teranga**, la **Place de la Teranga**, des taxis jaunes et noirs garés et des lampadaires.
 - Un cycle jour / nuit : soleil de Dakar, couchers de soleil orangés, fenêtres et lampadaires allumés la nuit.
 - **Des personnages humains réalistes et animés** (modèles et animations CC0 de Quaternius) : peaux noires de différents tons, cheveux, barbe. On voit des t-shirts, des chemises en wax, des grands boubous, des robes longues et des foulards. Les animations couvrent le repos, la marche, la course, le sprint et le saut.
 - Des passants qui marchent sur les trottoirs et traversent aux passages piétons.
@@ -55,6 +56,16 @@ assets/                    modèles 3D, animations, crédits (assets/CREDITS.md)
 docs/                      vision, feuille de route, guide des modèles 3D
 tests/validate.gd          vérifie la cohérence des missions et de la ville
 ```
+
+## Mettre à jour ou agrandir la carte de Dakar
+
+```
+python3 tools/osm_download.py SUD OUEST NORD EST dossier_tuiles       # télécharge la zone (API OpenStreetMap)
+python3 tools/osm_to_game.py dossier_tuiles data/map/dakar_centre.json SUD OUEST NORD EST
+```
+
+Zone actuelle : `14.655 -17.455 14.695 -17.420` (Plateau, Médina, Fann, Colobane, Corniche ouest).
+Carte © les contributeurs OpenStreetMap (ODbL).
 
 ## Ajouter une mission
 

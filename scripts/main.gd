@@ -3,6 +3,7 @@ extends Node3D
 ## l'interface et les missions, puis fait tourner le cycle jour / nuit.
 
 const City = preload("res://scripts/world/city_generator.gd")
+const OsmCity = preload("res://scripts/world/osm_city.gd")
 const Player = preload("res://scripts/characters/player.gd")
 const Pedestrian = preload("res://scripts/characters/pedestrian.gd")
 const Hud = preload("res://scripts/ui/hud.gd")
@@ -22,7 +23,8 @@ var missions
 
 func _ready() -> void:
 	_build_environment()
-	city = City.new()
+	# vraie ville (OpenStreetMap) si les données sont présentes, sinon quartier généré
+	city = OsmCity.new() if OsmCity.available() else City.new()
 	city.name = "Ville"
 	add_child(city)
 	city.build()
@@ -34,6 +36,8 @@ func _ready() -> void:
 	player.name = "Joueur"
 	add_child(player)
 	player.global_position = city.spawn_point
+	if "focus" in city:
+		city.focus = player
 	player.hud = hud
 	hud.player = player
 	hud.camera = player.camera
@@ -43,7 +47,8 @@ func _ready() -> void:
 		var p := Pedestrian.new()
 		add_child(p)
 		var female := randf() < 0.5
-		p.setup(city, city.random_sidewalk_node(), {
+		var start_node: int = city.random_sidewalk_node_near(city.spawn_point, 260.0) if city.has_method("random_sidewalk_node_near") else city.random_sidewalk_node()
+		p.setup(city, start_node, {
 			"female": female,
 			"top": Humanoid.CLOTH.pick_random(),
 			"bottom": [Color("26313d"), Color("1d1d1d"), Color("3b4a5c"), Color("5b4a3a"), Color("c9b28a")].pick_random(),
@@ -80,6 +85,30 @@ func _parse_dev_args() -> void:
 			_capture_path = a.get_slice("=", 1)
 		elif a.begins_with("--yaw="):
 			player.yaw = float(a.get_slice("=", 1))
+		elif a == "--debughair":
+			await get_tree().create_timer(3.0).timeout
+			for att in find_children("*", "BoneAttachment3D", true, false):
+				var owner_body: Node3D = att.get_parent().get_parent().get_parent().get_parent().get_parent()
+				var hair_y := -1.0
+				for mi in att.find_children("*", "MeshInstance3D", true, false):
+					hair_y = maxf(hair_y, mi.global_transform * mi.get_aabb().get_center().y if false else (mi.global_transform * mi.get_aabb().get_center()).y)
+				print("ATT bone=", att.bone_name, " idx=", att.bone_idx, " corps_y=%.2f att_y=%.2f meche_y=%.2f" % [owner_body.global_position.y, att.global_position.y, hair_y], " ", owner_body.name)
+			get_tree().quit()
+		elif a.begins_with("--nearcar="):
+			# se place près du n-ième véhicule garé (captures d'écran)
+			var kind := a.get_slice("=", 1)
+			for v in city._park_vehicles:
+				if v[2] == kind and v[0].distance_to(city.spawn_point) < 900.0:
+					player.global_position = v[0] + Vector3(cos(v[1]) * 5.0, 0.3, -sin(v[1]) * 5.0) + Vector3(sin(v[1]), 0, cos(v[1])) * 4.0
+					var to: Vector3 = v[0] - player.global_position
+					player.yaw = atan2(-to.x, -to.z)
+					break
+		elif a == "--nossao":
+			env.ssao_enabled = false
+		elif a == "--noglow":
+			env.glow_enabled = false
+		elif a == "--nofog":
+			env.fog_enabled = false
 		elif a == "--crowd":
 			# rassemble quelques passants devant la caméra (captures d'écran)
 			var k := 0
@@ -128,10 +157,12 @@ func _build_environment() -> void:
 	env.ssao_enabled = true
 	env.ssao_radius = 1.2
 	env.glow_enabled = true
-	env.glow_intensity = 0.4
+	env.glow_intensity = 0.6
+	env.glow_hdr_threshold = 0.9
+	env.glow_bloom = 0.05
 	env.fog_enabled = true
-	env.fog_density = 0.0025
-	env.fog_aerial_perspective = 0.4
+	env.fog_density = 0.0012
+	env.fog_aerial_perspective = 0.0   # >0 fait apparaître des silhouettes fantômes dans le ciel (Forward+)
 	env.adjustment_enabled = true
 	env.adjustment_saturation = 1.08
 	var we := WorldEnvironment.new()
@@ -146,6 +177,10 @@ func _build_environment() -> void:
 
 
 func _process(_delta: float) -> void:
+	if player and player.global_position.y < -4.0:
+		player.global_position = city.spawn_point
+		player.velocity = Vector3.ZERO
+		hud.toast("Plouf ! Retour à la place")
 	_update_daylight(Game.time_of_day)
 
 
@@ -157,15 +192,15 @@ func _update_daylight(t: float) -> void:
 	var night := 1.0 - day
 	var dusk := clampf(1.0 - absf(height - 0.08) / 0.3, 0.0, 1.0)
 	sun.rotation = Vector3(-clampf(elev, 0.15, PI - 0.15), deg_to_rad(-35.0), 0.0)
-	sun.light_energy = lerpf(0.05, 1.6, day)
+	sun.light_energy = lerpf(0.22, 1.6, day)   # la nuit : clair de lune
 	sun.light_color = Color(1.0, 0.95, 0.85).lerp(Color(1.0, 0.62, 0.38), dusk).lerp(Color(0.55, 0.65, 1.0), night)
-	sky_mat.sky_top_color = Color("2f6db5").lerp(Color("04070f"), night)
-	sky_mat.sky_horizon_color = Color("a9cbe6").lerp(Color("f29a5c"), dusk * 0.8).lerp(Color("101828"), night)
+	sky_mat.sky_top_color = Color("2f6db5").lerp(Color("0b1630"), night)
+	sky_mat.sky_horizon_color = Color("a9cbe6").lerp(Color("f29a5c"), dusk * 0.8).lerp(Color("1c2a44"), night)
 	sky_mat.ground_horizon_color = sky_mat.sky_horizon_color
 	sky_mat.ground_bottom_color = Color("5a4c3a").lerp(Color("050505"), night)
-	sky_mat.sky_energy_multiplier = lerpf(0.25, 1.0, day)
-	env.ambient_light_energy = lerpf(0.25, 1.0, day)
-	env.ambient_light_color = Color("d8c7a8").lerp(Color("1c2436"), night)
+	sky_mat.sky_energy_multiplier = lerpf(0.45, 1.0, day)
+	env.ambient_light_energy = lerpf(0.55, 1.0, day)
+	env.ambient_light_color = Color("d8c7a8").lerp(Color("3a4a6e"), night)
 	env.fog_light_color = sky_mat.sky_horizon_color
 	city.set_night(night)
 

@@ -3,12 +3,13 @@ extends SceneTree
 ## Lancer : godot --headless --script res://tests/validate.gd
 
 const City = preload("res://scripts/world/city_generator.gd")
+const OsmCity = preload("res://scripts/world/osm_city.gd")
 
 
 func _init() -> void:
 	var errors: Array[String] = []
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/missions.json"))
-	var city = City.new()
+	var city = OsmCity.new() if OsmCity.available() else City.new()
 	root.add_child(city)
 	city.build()
 	var npc_ids := {}

@@ -28,7 +28,8 @@ const HAIR_TINT := Color(0.06, 0.05, 0.045)
 const WALK_REF_SPEED := 1.45   # vitesse (m/s) à laquelle l'animation de marche est naturelle
 const RUN_REF_SPEED := 3.6
 
-static var _library: AnimationLibrary
+static var _libraries := {}       # une bibliothèque d'animations par morphologie
+static var _anim_pelvis_height := 0.0
 static var _dressed_cache := {}   # clé -> ArrayMesh habillé (partagé entre personnages)
 
 var anim: AnimationPlayer
@@ -53,7 +54,7 @@ func build(look: Dictionary) -> void:
 	anim = AnimationPlayer.new()
 	inst.add_child(anim)
 	anim.root_node = NodePath("..")
-	anim.add_animation_library("", _get_library())
+	anim.add_animation_library("", _get_library(skeleton))
 	anim.playback_default_blend_time = 0.25
 
 	for mi: MeshInstance3D in skeleton.find_children("*", "MeshInstance3D", true, false):
@@ -66,16 +67,33 @@ func build(look: Dictionary) -> void:
 	anim.seek(randf() * 1.0, true)
 
 
-func _get_library() -> AnimationLibrary:
-	if _library == null:
-		var src: Node = load(ANIMS).instantiate()
-		var ap: AnimationPlayer = src.find_child("AnimationPlayer", true, false)
-		_library = ap.get_animation_library("").duplicate(true)
-		src.free()
-		for n in _library.get_animation_list():
-			if n in [ANIM_IDLE, ANIM_WALK, ANIM_RUN, ANIM_SPRINT, ANIM_TALK, "Sitting_Idle", "Crouch_Idle", "Jump"]:
-				_library.get_animation(n).loop_mode = Animation.LOOP_LINEAR
-	return _library
+## Les animations ont été faites pour un mannequin aux jambes un peu plus courtes :
+## on adapte la hauteur du bassin à chaque morphologie pour que les pieds touchent le sol.
+func _get_library(sk: Skeleton3D) -> AnimationLibrary:
+	var pelvis := sk.find_bone("pelvis")
+	var target_h := sk.get_bone_global_rest(pelvis).origin.y if pelvis >= 0 else 0.0
+	var key := snappedf(target_h, 0.001)
+	if _libraries.has(key):
+		return _libraries[key]
+	var src: Node = load(ANIMS).instantiate()
+	var ap: AnimationPlayer = src.find_child("AnimationPlayer", true, false)
+	var src_sk: Skeleton3D = src.find_children("*", "Skeleton3D", true, false)[0]
+	var src_pelvis := src_sk.find_bone("pelvis")
+	var ratio := 1.0
+	if src_pelvis >= 0 and target_h > 0.0:
+		ratio = target_h / src_sk.get_bone_global_rest(src_pelvis).origin.y
+	var lib: AnimationLibrary = ap.get_animation_library("").duplicate(true)
+	src.free()
+	for n in lib.get_animation_list():
+		var a := lib.get_animation(n)
+		if n in [ANIM_IDLE, ANIM_WALK, ANIM_RUN, ANIM_SPRINT, ANIM_TALK, "Sitting_Idle", "Crouch_Idle", "Jump"]:
+			a.loop_mode = Animation.LOOP_LINEAR
+		for t in a.get_track_count():
+			if a.track_get_type(t) == Animation.TYPE_POSITION_3D and str(a.track_get_path(t)).ends_with(":pelvis"):
+				for k in a.track_get_key_count(t):
+					a.track_set_key_value(t, k, a.track_get_key_value(t, k) * ratio)
+	_libraries[key] = lib
+	return lib
 
 
 ## speed : vitesse horizontale en m/s.
@@ -258,4 +276,4 @@ func _add_hair(look: Dictionary, female: bool) -> void:
 			wrap.roughness = 0.85
 			for mi: MeshInstance3D in h.find_children("*", "MeshInstance3D", true, false):
 				mi.material_override = wrap
-				mi.scale = Vector3.ONE * 1.08
+				mi.scale *= 1.08   # multiplier : le modèle a déjà sa propre échelle

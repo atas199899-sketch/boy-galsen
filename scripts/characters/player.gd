@@ -3,6 +3,7 @@ extends CharacterBody3D
 ## interaction avec les personnages proches (touche E).
 
 const Humanoid = preload("res://scripts/characters/humanoid.gd")
+const Step = preload("res://scripts/core/step.gd")
 const PLAYER_MODEL := "res://assets/characters/player.glb"
 
 const WALK_SPEED := 1.8
@@ -57,7 +58,7 @@ func _ready() -> void:
 	camera = Camera3D.new()
 	camera.fov = 68.0
 	camera.near = 0.08
-	camera.far = 900.0
+	camera.far = 2500.0
 	spring.add_child(camera)
 	camera.make_current()
 	# dans un navigateur, la souris ne peut être capturée qu'après un clic du joueur
@@ -109,6 +110,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= gravity * delta
 	elif not locked and Input.is_action_just_pressed("jump"):
 		velocity.y = JUMP_VELOCITY
+	Step.try_step(self, Vector3(velocity.x, 0.0, velocity.z), delta)
 	move_and_slide()
 
 	var speed := Vector2(velocity.x, velocity.z).length()
