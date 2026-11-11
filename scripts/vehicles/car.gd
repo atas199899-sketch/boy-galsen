@@ -38,6 +38,31 @@ var handbrake := false
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var headlight: SpotLight3D
 var _idle := 0.0
+var driver_model: Node3D = null   # conducteur visible au volant (circulation automatique)
+var driver_look := {}
+
+
+## Place un conducteur assis au volant (côté gauche, on roule à droite au Sénégal).
+func add_driver(look: Dictionary) -> void:
+	var Humanoid = load("res://scripts/characters/humanoid.gd")
+	var h = Humanoid.new()
+	add_child(h)
+	h.build(look)
+	h.position = seat_position()
+	h.rotation.y = -PI / 2.0   # le personnage regarde vers -Z : on le tourne vers l'avant (+X)
+	h.set_driving(true)
+	for gi in h.find_children("*", "GeometryInstance3D", true, false):
+		gi.visibility_range_end = 90.0
+	driver_model = h
+	driver_look = look
+
+
+func seat_position() -> Vector3:
+	if kind == "jakarta":
+		return Vector3(-0.2, 0.35, 0.0)
+	if size.x > 4.9:
+		return Vector3(size.x * 0.33, 0.45, -size.z * 0.24)   # minibus : cabine à l'avant
+	return Vector3(size.x * 0.02, 0.22, -size.z * 0.22)
 
 
 func setup(p_kind: String, model: Node3D, p_size: Vector3) -> void:
@@ -45,7 +70,7 @@ func setup(p_kind: String, model: Node3D, p_size: Vector3) -> void:
 	size = p_size
 	name = "Vehicule_" + kind
 	collision_layer = 4
-	collision_mask = 1 | 2 | 4
+	collision_mask = 1 | 4   # pas les personnages : une voiture ne doit jamais « monter » sur quelqu'un
 	floor_snap_length = 0.4
 	floor_max_angle = deg_to_rad(50.0)
 	safe_margin = 0.02
@@ -106,8 +131,8 @@ func interact(player) -> void:
 		player.enter_vehicle(self)
 
 
-## Vol de voiture : le véhicule s'arrête, on ouvre la portière, le conducteur est sorti
-## de force et s'enfuit en criant, puis le joueur prend le volant.
+## Vol de voiture : le véhicule s'arrête, le joueur va à la portière, l'ouvre, tire le
+## conducteur hors de la voiture (il tombe, se relève et s'enfuit), puis prend le volant.
 func _carjack(player) -> void:
 	_taking = true
 	var traffic = ai
@@ -118,36 +143,62 @@ func _carjack(player) -> void:
 	handbrake = true
 	set_physics_process(true)
 	player.controls_locked = true
-	# portière ouverte : un panneau qui pivote côté conducteur
 	var left := -global_transform.basis.z.normalized()
+	var fwd := forward()
+	var seat_world := global_transform * seat_position()
+	# le joueur se place devant la portière, face à la voiture
+	var door_spot := seat_world + left * (size.z * 0.28 + 0.75)
+	door_spot.y = global_position.y + 0.2
+	player.global_position = door_spot
+	var to_car := seat_world - door_spot
+	player.model.rotation.y = atan2(-to_car.x, -to_car.z)
+	player.model.play_action("Interact", 1.4)
+	# portière qui s'ouvre
 	var door := MeshInstance3D.new()
 	var bm := BoxMesh.new()
-	bm.size = Vector3(minf(1.1, size.x * 0.28), size.y * 0.55, 0.06)
+	bm.size = Vector3(minf(1.1, size.x * 0.28), size.y * 0.5, 0.06)
 	door.mesh = bm
 	var dm := StandardMaterial3D.new()
-	dm.albedo_color = Color(0.15, 0.17, 0.2)
+	dm.albedo_color = Color(0.12, 0.14, 0.17)
 	dm.metallic = 0.5
 	door.material_override = dm
 	add_child(door)
-	var hinge := Vector3(size.x * 0.18, size.y * 0.45, -size.z * 0.5)
-	door.position = hinge + Vector3(-bm.size.x * 0.5, 0, 0)
+	var hinge := Vector3(seat_position().x + bm.size.x * 0.5, size.y * 0.45, -size.z * 0.5)
+	var open_door := func(a: float):
+		door.transform = Transform3D(Basis(Vector3.UP, a), hinge) * Transform3D(Basis(), Vector3(-bm.size.x * 0.5, 0, 0))
+	open_door.call(0.0)
 	var tw := create_tween()
-	tw.tween_method(func(a: float):
-		door.transform = Transform3D(Basis(Vector3.UP, a), Vector3.ZERO).translated(Vector3(-bm.size.x * 0.5, 0, 0))
-		door.position += hinge, 0.0, -1.1, 0.35)
-	await get_tree().create_timer(0.4).timeout
-	# le conducteur est éjecté et s'enfuit
+	tw.tween_method(open_door, 0.0, -1.15, 0.35)
+	await get_tree().create_timer(0.45).timeout
+	# on tire le conducteur dehors
+	var out_local := seat_position() + Vector3(0, -seat_position().y + 0.05, -(size.z * 0.5 + 1.5))
+	if driver_model:
+		player.model.play_action("Push", 1.2)
+		driver_model.set_driving(false)
+		driver_model.play_action("Hit_Chest", 1.0)
+		var tw2 := create_tween()
+		tw2.tween_property(driver_model, "position", out_local, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw2.parallel().tween_property(driver_model, "rotation:y", PI / 2.0, 0.55)
+		await tw2.finished
+		await get_tree().create_timer(0.35).timeout
+	# il se relève et s'enfuit (il devient un passant)
 	if traffic and traffic.city:
 		var Pedestrian = load("res://scripts/characters/pedestrian.gd")
 		var ped = Pedestrian.new()
-		traffic.city.add_child(ped)
 		var city = traffic.city
+		city.add_child(ped)
 		var node: int = city.random_sidewalk_node_near(global_position, 40.0) if city.has_method("random_sidewalk_node_near") else city.random_sidewalk_node()
-		ped.setup(city, node, {"female": randf() < 0.2, "top": [Color("ecf0f1"), Color("2c3e50"), Color("1f5fae"), Color("c0392b")].pick_random()})
-		ped.global_position = global_position + left * (size.z * 0.5 + 0.9) + Vector3(0, 0.3, 0)
+		var look: Dictionary = driver_look if not driver_look.is_empty() else {"top": Color("2c3e50")}
+		ped.setup(city, node, look)
+		ped.global_position = global_transform * out_local + Vector3(0, 0.2, 0)
 		ped.flee_from(player.global_position, 7.0)
 		ped.say(DRIVER_SHOUTS.pick_random(), 3.0)
-	await get_tree().create_timer(0.5).timeout
+	if driver_model:
+		driver_model.queue_free()
+		driver_model = null
+	var tw3 := create_tween()
+	tw3.tween_method(open_door, -1.15, 0.0, 0.3)
+	await tw3.finished
 	door.queue_free()
 	player.controls_locked = false
 	_taking = false

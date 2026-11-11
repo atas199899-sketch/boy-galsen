@@ -167,8 +167,23 @@ func exit_vehicle() -> void:
 		return
 	car.release_control()
 	vehicle = null
+	# sortie côté conducteur ; si c'est bloqué (mur, autre véhicule), côté passager ou derrière
 	var left: Vector3 = -car.global_transform.basis.z.normalized()
-	var spot: Vector3 = car.global_position + left * (car.size.z * 0.5 + 0.8) + Vector3(0, 0.3, 0)
+	var candidates: Array = [left * (car.size.z * 0.5 + 1.0), -left * (car.size.z * 0.5 + 1.0), -car.forward() * (car.size.x * 0.5 + 1.2)]
+	var spot: Vector3 = car.global_position + candidates[0] + Vector3(0, 0.4, 0)
+	for c in candidates:
+		var p: Vector3 = car.global_position + c + Vector3(0, 0.4, 0)
+		var space := get_world_3d().direct_space_state
+		var q := PhysicsShapeQueryParameters3D.new()
+		var cap := CapsuleShape3D.new()
+		cap.radius = 0.3
+		cap.height = 1.7
+		q.shape = cap
+		q.transform = Transform3D(Basis(), p + Vector3(0, 0.9, 0))
+		q.collision_mask = 1 | 4
+		if space.intersect_shape(q, 1).is_empty():
+			spot = p
+			break
 	global_position = spot
 	collision_layer = 2
 	collision_mask = 1 | 2 | 4

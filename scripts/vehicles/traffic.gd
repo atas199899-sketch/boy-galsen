@@ -97,6 +97,9 @@ func _spawn_near(p: Vector3) -> void:
 		car.set_meta("cruise", rng.randf_range(8.0, 12.5) if kind != "jakarta" else rng.randf_range(9.0, 13.0))
 		car.ai = self
 		car.speed = 5.0
+		var female := rng.randf() < 0.15
+		car.add_driver({"female": female, "top": [Color("ecf0f1"), Color("2c3e50"), Color("1f5fae"), Color("c0392b"), Color("16a085"), Color("f1c40f")][rng.randi() % 6],
+			"bottom": [Color("26313d"), Color("1d1d1d"), Color("3b4a5c")][rng.randi() % 3], "head_wrap": female, "hair": "Hair_Buzzed" if not female else "Hair_Buns"})
 		car.wake()
 		cars.append(car)
 		return

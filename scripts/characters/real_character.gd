@@ -35,6 +35,8 @@ static var _dressed_cache := {}   # clé -> ArrayMesh habillé (partagé entre p
 var anim: AnimationPlayer
 var skeleton: Skeleton3D
 var talking := false
+var driving := false      # assis au volant (animation « Driving »)
+var _action_time := 0.0   # animation ponctuelle en cours (tirer, tomber…)
 var _current := ""
 
 
@@ -86,7 +88,7 @@ func _get_library(sk: Skeleton3D) -> AnimationLibrary:
 	src.free()
 	for n in lib.get_animation_list():
 		var a := lib.get_animation(n)
-		if n in [ANIM_IDLE, ANIM_WALK, ANIM_RUN, ANIM_SPRINT, ANIM_TALK, "Sitting_Idle", "Crouch_Idle", "Jump"]:
+		if n in [ANIM_IDLE, ANIM_WALK, ANIM_RUN, ANIM_SPRINT, ANIM_TALK, "Sitting_Idle", "Crouch_Idle", "Jump", "Driving"]:
 			a.loop_mode = Animation.LOOP_LINEAR
 		for t in a.get_track_count():
 			if a.track_get_type(t) == Animation.TYPE_POSITION_3D and str(a.track_get_path(t)).ends_with(":pelvis"):
@@ -98,9 +100,14 @@ func _get_library(sk: Skeleton3D) -> AnimationLibrary:
 
 ## speed : vitesse horizontale en m/s.
 func play_state(speed: float, airborne := false) -> void:
+	if _action_time > 0.0:
+		_action_time -= get_process_delta_time()
+		return
 	var target := ANIM_IDLE
 	var scale := 1.0
-	if airborne:
+	if driving:
+		target = "Driving"
+	elif airborne:
 		target = ANIM_JUMP
 	elif speed > 4.2:
 		target = ANIM_SPRINT
@@ -117,6 +124,17 @@ func play_state(speed: float, airborne := false) -> void:
 		anim.play(target)
 		_current = target
 	anim.speed_scale = scale
+
+
+## Joue une animation une seule fois (tirer quelqu'un, encaisser un coup…), puis reprend le cours normal.
+func play_action(anim_name: String, speed_scale := 1.0) -> float:
+	if not anim.has_animation(anim_name):
+		return 0.0
+	anim.play(anim_name, 0.15)
+	anim.speed_scale = speed_scale
+	_current = anim_name
+	_action_time = anim.get_animation(anim_name).length / speed_scale
+	return _action_time
 
 
 # ---------------------------------------------------------------- vêtements

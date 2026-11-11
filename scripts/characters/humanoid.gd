@@ -188,3 +188,15 @@ func _box(size: Vector3, m: Material) -> MeshInstance3D:
 func set_talking(v: bool) -> void:
 	if real:
 		real.talking = v
+
+
+## Assis au volant.
+func set_driving(v: bool) -> void:
+	if real:
+		real.driving = v
+		real.play_state(0.0)
+
+
+## Animation ponctuelle (voir real_character.gd). Renvoie sa durée.
+func play_action(anim_name: String, speed_scale := 1.0) -> float:
+	return real.play_action(anim_name, speed_scale) if real else 0.0
