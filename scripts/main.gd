@@ -326,7 +326,6 @@ func _drivetest() -> void:
 		var target = traffic.cars[0]
 		player.global_position = target.global_position - target.global_transform.basis.z * (target.size.z * 0.5 + 1.0) + Vector3(0, 0.5, 0)
 		target.interact(player)
-		player.yaw = atan2(-target.forward().x, -target.forward().z) + 1.2
 		await get_tree().create_timer(3.0).timeout
 		jacked = player.vehicle == target and target.ai == null
 		for p in get_tree().get_nodes_in_group("pedestrian"):

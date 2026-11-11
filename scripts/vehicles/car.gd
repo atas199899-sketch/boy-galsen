@@ -152,6 +152,11 @@ func _carjack(player) -> void:
 	player.global_position = door_spot
 	var to_car := seat_world - door_spot
 	player.model.rotation.y = atan2(-to_car.x, -to_car.z)
+	# caméra derrière le joueur, tournée vers la portière : la scène est bien visible
+	player.yaw = player.model.rotation.y + 0.35
+	player.pitch = -0.16
+	player.spring.spring_length = 3.4
+	player._cam_free = 3.0
 	player.model.play_action("Interact", 1.4)
 	# portière qui s'ouvre
 	var door := MeshInstance3D.new()
