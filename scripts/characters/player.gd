@@ -60,7 +60,9 @@ func _ready() -> void:
 	camera.far = 900.0
 	spring.add_child(camera)
 	camera.make_current()
-	_capture_mouse(true)
+	# dans un navigateur, la souris ne peut être capturée qu'après un clic du joueur
+	if not OS.has_feature("web"):
+		_capture_mouse(true)
 
 
 func _capture_mouse(on: bool) -> void:

@@ -38,7 +38,8 @@ func _ready() -> void:
 	hud.player = player
 	hud.camera = player.camera
 
-	for k in PEDESTRIANS:
+	var count := PEDESTRIANS / 2 if OS.has_feature("web") else PEDESTRIANS   # navigateur : moins de passants
+	for k in count:
 		var p := Pedestrian.new()
 		add_child(p)
 		var female := randf() < 0.5
@@ -58,7 +59,7 @@ func _ready() -> void:
 	missions = MissionManager.new()
 	add_child(missions)
 	missions.setup(city, player, hud)
-	hud.toast("Boy Galsen\nBienvenue à Dakar")
+	hud.toast("Boy Galsen\nBienvenue à Dakar" + ("\n\nClique dans le jeu pour commencer" if OS.has_feature("web") else ""))
 	_parse_dev_args()
 
 
