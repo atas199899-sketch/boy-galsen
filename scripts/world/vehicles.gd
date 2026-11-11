@@ -30,9 +30,9 @@ static func make(kind: String, rng: RandomNumberGenerator) -> Node3D:
 static func size_of(kind: String) -> Vector3:
 	match kind:
 		"car_rapide":
-			return Vector3(5.3, 2.5, 2.0)
+			return Vector3(5.1, 2.5, 2.0)
 		"ndiaga":
-			return Vector3(7.0, 2.8, 2.2)
+			return Vector3(6.3, 2.9, 2.15)
 	return Vector3(4.4, 1.5, 1.8)
 
 
@@ -215,11 +215,6 @@ static func _sedan(root: Node3D, color: Color, taxi: bool, rng: RandomNumberGene
 	# toit peint + montants
 	var roof_col := Color(0.06, 0.06, 0.06) if taxi else color
 	root.add_child(loft([[-1.0, 1.42, 1.49, 0.71, 0.66], [0.4, 1.44, 1.51, 0.71, 0.66]], paint(roof_col), 8))
-	for x in [-0.35, 0.95]:
-		for side in [-1.0, 1.0]:
-			var p := box(Vector3(0.09, 0.48, 0.05), Vector3(x if x < 0 else 0.84, 1.2, side * 0.8), body)
-			p.rotation.z = 0.0 if x < 0 else -0.6
-			root.add_child(p)
 	if taxi:
 		root.add_child(box(Vector3(4.46, 0.12, 1.79), Vector3(0, 0.7, 0), paint(Color(0.05, 0.05, 0.05))))
 		root.add_child(box(Vector3(0.55, 0.2, 0.32), Vector3(-0.3, 1.6, 0), mat("head")))
@@ -233,67 +228,141 @@ static func _sedan(root: Node3D, color: Color, taxi: bool, rng: RandomNumberGene
 	wheels(root, [-1.35, 1.35], 0.8, 0.32)
 
 
-static func _car_rapide(root: Node3D, rng: RandomNumberGenerator) -> void:
-	var blue := paint(Color("1f5fae"))
-	var yellow := paint(Color("f2c230"))
-	var white := paint(Color("f1efe8"))
-	# caisse : bas jaune, bande bleue, vitres, toit blanc bombé
-	root.add_child(loft([[-2.65, 0.45, 1.15, 0.98, 0.98], [2.2, 0.45, 1.15, 0.98, 0.98], [2.62, 0.5, 1.05, 0.9, 0.92]], yellow))
-	root.add_child(loft([[-2.65, 1.15, 1.35, 0.98, 0.98], [2.4, 1.15, 1.35, 0.98, 0.97], [2.6, 1.05, 1.3, 0.92, 0.9]], blue))
-	root.add_child(loft([[-2.6, 1.35, 1.9, 0.98, 0.95], [1.9, 1.35, 1.9, 0.98, 0.95], [2.45, 1.3, 1.75, 0.96, 0.92]], mat("glass"), 10))
-	root.add_child(loft([[-2.65, 1.88, 2.25, 0.97, 0.8], [1.95, 1.88, 2.25, 0.97, 0.8], [2.4, 1.75, 2.0, 0.93, 0.8]], white, 10))
-	# montants bleus entre les fenêtres
-	for x in [-2.0, -1.0, 0.0, 1.0, 1.85]:
+static func _label(root: Node3D, text: String, pos: Vector3, rot_y: float, size: int, color: Color, outline := Color(0, 0, 0, 0)) -> void:
+	var l := Label3D.new()
+	l.text = text
+	l.font_size = size
+	l.pixel_size = 0.004
+	l.modulate = color
+	l.outline_size = 8 if outline.a > 0.0 else 0
+	l.outline_modulate = outline
+	l.position = pos
+	l.rotation.y = rot_y
+	l.double_sided = false
+	root.add_child(l)
+
+
+## Fenêtres latérales : rectangles vitrés posés sur la caisse (x0, x1 le long du véhicule).
+static func _side_windows(root: Node3D, spans: Array, y0: float, y1: float, hw: float) -> void:
+	for sp in spans:
 		for side in [-1.0, 1.0]:
-			root.add_child(box(Vector3(0.12, 0.56, 0.04), Vector3(x, 1.62, side * 0.97), blue))
-	# décorations peintes (bandes et losanges)
-	for k in 6:
-		var c: Color = [Color("c0392b"), Color("27ae60"), Color("f1efe8")][k % 3]
-		root.add_child(box(Vector3(0.5, 0.18, 0.02), Vector3(-2.2 + k * 0.8, 0.8, 0.99), paint(c)))
-		root.add_child(box(Vector3(0.5, 0.18, 0.02), Vector3(-2.2 + k * 0.8, 0.8, -0.99), paint(c)))
-	# galerie sur le toit avec bagages
-	var rack := mat("rust")
-	for z in [-0.75, 0.75]:
-		root.add_child(box(Vector3(3.8, 0.05, 0.05), Vector3(-0.3, 2.45, z), rack))
-	for x in [-2.0, -1.0, 0.0, 1.0]:
-		root.add_child(box(Vector3(0.05, 0.05, 1.5), Vector3(x, 2.45, 0), rack))
-	for k in rng.randi_range(1, 4):
-		var c: Color = [Color("5b4636"), Color("2c3e50"), Color("8e44ad"), Color("c9b28a")][rng.randi() % 4]
-		root.add_child(box(Vector3(rng.randf_range(0.5, 0.9), rng.randf_range(0.3, 0.5), rng.randf_range(0.4, 0.8)), Vector3(rng.randf_range(-1.8, 0.8), 2.62, rng.randf_range(-0.4, 0.4)), paint(c)))
-	# porte arrière ouverte avec l'apprenti qui s'y accroche (marchepied)
-	root.add_child(box(Vector3(0.1, 0.06, 1.2), Vector3(-2.75, 0.5, 0), mat("chrome")))
+			root.add_child(box(Vector3(sp[1] - sp[0], y1 - y0, 0.03), Vector3((sp[0] + sp[1]) * 0.5, (y0 + y1) * 0.5, side * (hw + 0.01)), mat("glass")))
+
+
+## Galerie de toit : cadre + barreaux.
+static func _roof_rack(root: Node3D, x0: float, x1: float, y: float, hw: float, m: Material) -> void:
+	for z in [-hw, hw]:
+		root.add_child(box(Vector3(x1 - x0, 0.06, 0.06), Vector3((x0 + x1) * 0.5, y + 0.25, z), m))
+		root.add_child(box(Vector3(x1 - x0, 0.05, 0.05), Vector3((x0 + x1) * 0.5, y + 0.08, z), m))
+	var x := x0
+	while x <= x1 + 0.01:
+		root.add_child(box(Vector3(0.05, 0.05, hw * 2.0), Vector3(x, y + 0.25, 0), m))
+		for z in [-hw, hw]:
+			root.add_child(box(Vector3(0.05, 0.22, 0.05), Vector3(x, y + 0.14, z), m))
+		x += 0.6
+
+
+## Car rapide (Renault SG2) : petit capot arrondi, bas bleu, bandeau blanc
+## « TRANSPORT EN COMMUN », haut et toit jaunes, galerie, décorations peintes.
+static func _car_rapide(root: Node3D, rng: RandomNumberGenerator) -> void:
+	var blue := paint(Color("1d4f9c"))
+	var yellow := paint(Color("f0b52a"))
+	var white := paint(Color("f3f1ea"))
+	var hw := 0.98
+	# caisse : bas bleu, bandeau blanc, haut jaune, toit jaune bombé
+	root.add_child(loft([[-2.5, 0.45, 1.05, hw, hw], [1.95, 0.45, 1.05, hw, hw]], blue))
+	root.add_child(loft([[-2.5, 1.05, 1.28, hw, hw], [1.95, 1.05, 1.28, hw, hw]], white))
+	root.add_child(loft([[-2.5, 1.28, 1.95, hw, hw * 0.99], [1.95, 1.28, 1.95, hw, hw * 0.99]], yellow))
+	root.add_child(loft([[-2.5, 1.94, 2.22, hw * 0.99, hw * 0.82], [1.95, 1.94, 2.22, hw * 0.99, hw * 0.82], [2.02, 1.9, 2.12, hw * 0.95, hw * 0.8]], yellow, 12))
+	# capot court et arrondi (bleu en bas, jaune dessus) + calandre
+	root.add_child(loft([[1.9, 0.5, 1.2, 0.86, 0.8], [2.3, 0.5, 1.12, 0.84, 0.72], [2.5, 0.55, 0.98, 0.76, 0.6], [2.56, 0.62, 0.86, 0.66, 0.5]], yellow, 12))
+	root.add_child(box(Vector3(0.08, 0.32, 0.9), Vector3(2.52, 0.72, 0), white))
+	for k in 5:
+		root.add_child(box(Vector3(0.03, 0.03, 0.8), Vector3(2.565, 0.6 + k * 0.06, 0), mat("chrome")))
+	root.add_child(box(Vector3(0.1, 0.16, 1.9), Vector3(2.55, 0.48, 0), mat("chrome")))
+	# pare-brise et vitre de porte
+	var ws := box(Vector3(0.04, 0.6, 1.7), Vector3(1.98, 1.58, 0), mat("glass"))
+	ws.rotation.z = 0.12
+	root.add_child(ws)
+	_side_windows(root, [[1.15, 1.85], [-2.35, -1.6], [-1.45, -0.7], [-0.55, 0.25], [0.4, 1.0]], 1.36, 1.86, hw)
+	# texte et décorations
 	for side in [-1.0, 1.0]:
-		root.add_child(box(Vector3(0.06, 0.16, 0.3), Vector3(2.62, 0.75, side * 0.6), mat("head")))
-		root.add_child(box(Vector3(0.05, 0.2, 0.15), Vector3(-2.66, 0.9, side * 0.85), mat("tail")))
-	root.add_child(box(Vector3(0.06, 0.25, 1.4), Vector3(2.64, 0.55, 0), mat("chrome")))
-	wheels(root, [-1.7, 1.75], 0.88, 0.38)
+		_label(root, "TRANSPORT EN COMMUN", Vector3(-0.3, 1.165, side * (hw + 0.02)), 0.0 if side > 0 else PI, 72, Color("1d4f9c"))
+		_label(root, ["Touba", "Alhamdoulilah", "Ndiguel", "Baye Fall"][rng.randi() % 4], Vector3(-1.2, 0.8, side * (hw + 0.02)), 0.0 if side > 0 else PI, 56, Color("f3f1ea"))
+		var d := box(Vector3(0.35, 0.35, 0.02), Vector3(0.9, 0.78, side * (hw + 0.012)), paint(Color("e74c3c")))
+		d.rotation.z = PI / 4.0
+		root.add_child(d)
+		root.add_child(box(Vector3(0.18, 0.18, 0.025), Vector3(0.9, 0.78, side * (hw + 0.015)), paint(Color("27ae60"))))
+		root.add_child(box(Vector3(4.4, 0.04, 0.02), Vector3(-0.27, 1.03, side * (hw + 0.012)), paint(Color("e74c3c"))))
+		root.add_child(box(Vector3(0.1, 0.14, 0.24), Vector3(2.5, 0.85, side * 0.62), mat("head")))
+		root.add_child(box(Vector3(0.05, 0.2, 0.15), Vector3(-2.52, 0.9, side * 0.85), mat("tail")))
+	_label(root, "ALHAMDOULILAH", Vector3(2.03, 2.0, 0), PI / 2.0, 64, Color("1d4f9c"))
+	# galerie de toit avec bagages
+	_roof_rack(root, -2.3, 1.7, 2.22, 0.88, paint(Color("2a3f6b")))
+	for k in rng.randi_range(1, 3):
+		root.add_child(box(Vector3(rng.randf_range(0.5, 0.9), rng.randf_range(0.3, 0.5), rng.randf_range(0.4, 0.8)), Vector3(rng.randf_range(-1.8, 0.8), 2.55, rng.randf_range(-0.4, 0.4)), paint([Color("5b4636"), Color("2c3e50"), Color("8e44ad"), Color("c9b28a")][rng.randi() % 4])))
+	# échelle et marchepied arrière (porte ouverte de l'apprenti)
+	for k in 4:
+		root.add_child(box(Vector3(0.04, 0.04, 0.5), Vector3(-2.53, 1.0 + k * 0.32, 0.55), mat("chrome")))
+	root.add_child(box(Vector3(0.25, 0.05, 1.4), Vector3(-2.62, 0.45, 0), mat("chrome")))
+	wheels(root, [-1.55, 1.55], 0.86, 0.4)
 
 
+## Ndiaga Ndiaye (Mercedes 508) : grand minibus blanc, petit nez court avec calandre,
+## grand pare-brise, fenêtres espacées, longue galerie de toit.
 static func _ndiaga(root: Node3D, rng: RandomNumberGenerator) -> void:
-	var white := paint(Color("f4f3ee"))
-	var stripe := paint([Color("1f7a4d"), Color("1f5fae"), Color("c0392b")][rng.randi() % 3])
-	root.add_child(loft([[-3.45, 0.5, 1.3, 1.08, 1.08], [2.9, 0.5, 1.3, 1.08, 1.08], [3.45, 0.55, 1.15, 1.0, 1.0]], white))
-	root.add_child(loft([[-3.45, 1.3, 2.0, 1.08, 1.05], [2.7, 1.3, 2.0, 1.08, 1.05], [3.35, 1.2, 1.85, 1.02, 0.98]], mat("glass"), 10))
-	root.add_child(loft([[-3.45, 1.98, 2.7, 1.06, 0.95], [2.75, 1.98, 2.7, 1.06, 0.95], [3.2, 1.85, 2.3, 1.0, 0.9]], white, 10))
+	var white := paint(Color("f2f1ec"))
+	var hw := 1.05
+	# caisse haute et longue + toit arrondi
+	root.add_child(loft([[-3.2, 0.5, 2.2, hw, hw], [2.45, 0.5, 2.2, hw, hw]], white))
+	root.add_child(loft([[-3.2, 2.18, 2.48, hw, hw * 0.86], [2.45, 2.18, 2.48, hw, hw * 0.86], [2.6, 2.1, 2.36, hw * 0.95, hw * 0.8]], white, 12))
+	# nez court (moteur) + calandre noire chromée + logo
+	root.add_child(loft([[2.4, 0.55, 1.3, 0.98, 0.95], [2.85, 0.55, 1.25, 0.96, 0.9], [3.1, 0.6, 1.12, 0.9, 0.8]], white, 12))
+	root.add_child(box(Vector3(0.06, 0.38, 1.0), Vector3(3.1, 0.88, 0), mat("black")))
+	for k in 4:
+		root.add_child(box(Vector3(0.03, 0.03, 0.95), Vector3(3.135, 0.75 + k * 0.09, 0), mat("chrome")))
+	var logo := MeshInstance3D.new()
+	var lm := TorusMesh.new()
+	lm.inner_radius = 0.07
+	lm.outer_radius = 0.09
+	logo.mesh = lm
+	logo.material_override = mat("chrome")
+	logo.position = Vector3(3.14, 0.9, 0)
+	logo.rotation.z = PI / 2.0
+	root.add_child(logo)
+	root.add_child(box(Vector3(0.14, 0.2, 2.15), Vector3(3.13, 0.5, 0), mat("black")))
 	for side in [-1.0, 1.0]:
-		root.add_child(box(Vector3(6.6, 0.16, 0.02), Vector3(-0.1, 1.15, side * 1.09), stripe))
-		for k in 7:
-			root.add_child(box(Vector3(0.1, 0.7, 0.04), Vector3(-3.0 + k * 0.95, 1.65, side * 1.07), white))
-		root.add_child(box(Vector3(0.06, 0.16, 0.35), Vector3(3.45, 0.8, side * 0.65), mat("head")))
-		root.add_child(box(Vector3(0.05, 0.2, 0.18), Vector3(-3.47, 0.95, side * 0.9), mat("tail")))
-		var l := Label3D.new()
-		l.text = ["Alhamdoulilah", "Touba", "Dieureudieuf Serigne", "Ndiaga Ndiaye"][rng.randi() % 4]
-		l.font_size = 64
-		l.pixel_size = 0.006
-		l.modulate = stripe.albedo_color
-		l.outline_size = 0
-		l.position = Vector3(-0.5, 0.85, side * 1.1)
-		l.rotation.y = 0.0 if side > 0 else PI
-		root.add_child(l)
-	root.add_child(box(Vector3(0.06, 0.3, 1.6), Vector3(3.47, 0.6, 0), mat("chrome")))
-	var rack := mat("rust")
-	for z in [-0.8, 0.8]:
-		root.add_child(box(Vector3(5.0, 0.05, 0.05), Vector3(-0.4, 2.85, z), rack))
-	for k in rng.randi_range(2, 5):
-		root.add_child(box(Vector3(rng.randf_range(0.5, 1.0), rng.randf_range(0.3, 0.6), rng.randf_range(0.5, 0.9)), Vector3(rng.randf_range(-2.6, 1.6), 3.05, rng.randf_range(-0.45, 0.45)), paint([Color("5b4636"), Color("2c3e50"), Color("c9b28a"), Color("7f8c8d")][rng.randi() % 4])))
-	wheels(root, [-2.3, 2.35], 0.95, 0.42)
+		var hl := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.1
+		cm.bottom_radius = 0.1
+		cm.height = 0.06
+		hl.mesh = cm
+		hl.material_override = mat("head")
+		hl.position = Vector3(3.11, 0.92, side * 0.72)
+		hl.rotation.z = PI / 2.0
+		root.add_child(hl)
+		root.add_child(box(Vector3(0.05, 0.1, 0.18), Vector3(3.1, 0.75, side * 0.72), paint(Color("e67e22"))))
+		root.add_child(box(Vector3(0.05, 0.25, 0.16), Vector3(-3.22, 1.0, side * 0.9), mat("tail")))
+		# porte de cabine (contour) et poignée
+		root.add_child(box(Vector3(0.03, 1.5, 0.02), Vector3(1.55, 1.3, side * (hw + 0.01)), mat("black")))
+		root.add_child(box(Vector3(0.18, 0.04, 0.03), Vector3(1.7, 1.25, side * (hw + 0.015)), mat("chrome")))
+		# drapeau du Sénégal peint
+		for k in 3:
+			root.add_child(box(Vector3(0.12, 0.28, 0.02), Vector3(2.15 + k * 0.12, 1.15, side * (hw + 0.012)), paint([Color("00853f"), Color("fdef42"), Color("e31b23")][k])))
+		_label(root, ["G.I.E Transport", "Touba Express", "Dieureudieuf", "Serigne Saliou"][rng.randi() % 4], Vector3(1.95, 1.0, side * (hw + 0.02)), 0.0 if side > 0 else PI, 44, Color("1b1b1b"))
+	# grand pare-brise incliné et vitres latérales espacées (larges panneaux blancs entre)
+	var ws := box(Vector3(0.04, 0.85, 1.85), Vector3(2.5, 1.75, 0), mat("glass"))
+	ws.rotation.z = 0.14
+	root.add_child(ws)
+	_side_windows(root, [[1.65, 2.35], [-3.0, -2.15], [-1.75, -0.85], [-0.45, 0.45], [0.8, 1.4]], 1.45, 2.0, hw)
+	_label(root, "ALHAMDOULILLAH", Vector3(2.62, 2.25, 0), PI / 2.0, 72, Color("1f7a4d"), Color("f2f1ec"))
+	# longue galerie de toit (jusqu'au-dessus de la cabine)
+	_roof_rack(root, -3.0, 2.6, 2.48, 0.98, paint(Color("d8cfbd")))
+	for k in rng.randi_range(1, 4):
+		root.add_child(box(Vector3(rng.randf_range(0.5, 1.0), rng.randf_range(0.3, 0.6), rng.randf_range(0.5, 0.9)), Vector3(rng.randf_range(-2.6, 1.6), 2.85, rng.randf_range(-0.45, 0.45)), paint([Color("5b4636"), Color("2c3e50"), Color("c9b28a"), Color("7f8c8d")][rng.randi() % 4])))
+	# passages de roues sombres
+	for x in [2.1, -1.7]:
+		for side in [-1.0, 1.0]:
+			root.add_child(box(Vector3(1.0, 0.5, 0.02), Vector3(x, 0.72, side * (hw + 0.005)), mat("black")))
+	wheels(root, [-1.7, 2.1], 0.92, 0.42)

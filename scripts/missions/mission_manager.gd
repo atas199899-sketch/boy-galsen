@@ -46,19 +46,37 @@ func _spawn_npc(d: Dictionary) -> void:
 	add_child(npc)
 	npc.setup(d)
 	var near: String = d.get("near", "start")
+	var taken: Array = []
+	for other in npcs.values():
+		taken.append(other.global_position)
 	var pos: Vector3
 	if near == "start":
-		pos = city.sidewalk_point_near(city.spawn_point, 6.0, 30.0)
+		pos = _point_near(city.spawn_point, 6.0, 30.0, taken)
 	elif near == "far":
-		pos = city.sidewalk_point_near(city.spawn_point, 90.0, 160.0)
+		pos = _point_near(city.spawn_point, 90.0, 160.0, taken)
 	elif city.places.has(near):
-		pos = city.places[near] + Vector3(randf_range(-2.0, 2.0), 0.0, randf_range(-2.0, 2.0))
+		pos = _point_near(city.places[near], 3.0, 15.0, taken)
 	else:
-		pos = city.sidewalk_point_near(city.spawn_point, 10.0, 80.0)
+		pos = _point_near(city.spawn_point, 10.0, 80.0, taken)
 	npc.global_position = pos
 	npc.rotation.y = randf() * TAU
 	npc.talked.connect(_on_talk)
 	npcs[d.id] = npc
+
+
+## Point de trottoir à distance donnée, à au moins 5 m des autres personnages.
+func _point_near(from: Vector3, min_d: float, max_d: float, taken: Array) -> Vector3:
+	if city.has_method("random_sidewalk_node_near"):   # vraie ville : recherche avec espacement
+		return city.sidewalk_point_near(from, min_d, max_d, taken, 5.0)
+	for t in 30:
+		var p: Vector3 = city.sidewalk_point_near(from, min_d, max_d)
+		var ok := true
+		for q in taken:
+			if p.distance_to(q) < 5.0:
+				ok = false
+		if ok:
+			return p
+	return city.sidewalk_point_near(from, min_d, max_d)
 
 
 func _make_beacon() -> void:

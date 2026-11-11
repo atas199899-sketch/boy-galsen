@@ -143,7 +143,7 @@ func _dress(mi: MeshInstance3D, look: Dictionary, female: bool) -> void:
 	m.set_shader_parameter("pattern", 1.0 if look.get("wax", false) else 0.0)
 	m.set_shader_parameter("pattern_color", look.get("pattern_color", Color("f1c40f")))
 	# coupe du vêtement
-	m.set_shader_parameter("top_low", 0.5)
+	m.set_shader_parameter("top_low", 0.525)   # bas du t-shirt au niveau des hanches
 	m.set_shader_parameter("has_bottom", 1.0)
 	m.set_shader_parameter("sleeve", 0.84 if style in ["boubou", "dress"] else 0.4)
 	m.set_shader_parameter("neck_hole", 0.80 if female else 0.81)

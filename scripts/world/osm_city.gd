@@ -486,6 +486,11 @@ func _build_buildings() -> void:
 		if poly.size() < 3:
 			continue
 		var area := absf(_signed_area(poly))
+		var perim := 0.0
+		for i in poly.size():
+			perim += poly[i].distance_to(poly[(i + 1) % poly.size()])
+		if area < 12.0 or area / perim < 1.0:
+			continue   # forme trop fine (mur, clôture) : ce n'est pas un vrai bâtiment
 		var center := Vector2.ZERO
 		for p in poly:
 			center += p
@@ -899,17 +904,26 @@ func random_sidewalk_node_near(p: Vector3, radius: float) -> int:
 	return random_sidewalk_node()
 
 
-func sidewalk_point_near(from: Vector3, min_d: float, max_d: float) -> Vector3:
-	for attempt in 400:
-		var i := randi() % sidewalk_nodes.size()
-		var links: Array = sidewalk_links[i]
-		if links.is_empty():
+## Point de trottoir au hasard entre min_d et max_d de `from`, en évitant les points de `avoid`.
+func sidewalk_point_near(from: Vector3, min_d: float, max_d: float, avoid: Array = [], spacing := 5.0) -> Vector3:
+	var candidates: Array = []
+	for i in sidewalk_nodes.size():
+		if sidewalk_links[i].is_empty():
 			continue
-		var p := sidewalk_nodes[i].lerp(sidewalk_nodes[links.pick_random()], randf_range(0.2, 0.8))
-		var d := p.distance_to(from)
+		var d := sidewalk_nodes[i].distance_to(from)
 		if d >= min_d and d <= max_d:
+			candidates.append(i)
+	candidates.shuffle()
+	for i in candidates:
+		var p := sidewalk_nodes[i].lerp(sidewalk_nodes[sidewalk_links[i].pick_random()], randf_range(0.2, 0.8))
+		var ok := true
+		for q in avoid:
+			if p.distance_to(q) < spacing:
+				ok = false
+				break
+		if ok:
 			return p
-	return from
+	return from + Vector3(randf_range(-6.0, 6.0), 0.0, randf_range(-6.0, 6.0))
 
 
 func set_night(night: float) -> void:
