@@ -5,3 +5,6 @@
 /android/
 /build/
 *.tmp
+
+# Modèles sous licence Sketchfab Standard : utilisables dans le jeu, mais pas redistribuables en fichiers bruts
+assets/vehicles/standard/

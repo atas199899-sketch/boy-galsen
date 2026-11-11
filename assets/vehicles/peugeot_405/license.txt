@@ -1,0 +1,11 @@
+Model Information:
+* title:	Peugeot 405 97' Sedan
+* source:	https://sketchfab.com/3d-models/peugeot-405-97-sedan-477b9602c0ec4e7da418eedb844a85e8
+* author:	Tomas Rubianes (https://sketchfab.com/rasamot)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Peugeot 405 97' Sedan" (https://sketchfab.com/3d-models/peugeot-405-97-sedan-477b9602c0ec4e7da418eedb844a85e8) by Tomas Rubianes (https://sketchfab.com/rasamot) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

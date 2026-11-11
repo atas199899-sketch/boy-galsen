@@ -435,15 +435,31 @@ var _vehicle_count := 0
 var _park_vehicles: Array = []
 
 
+## Répartition des véhicules garés : vrais modèles quand ils sont présents, sinon modèles en code.
+const VEHICLE_MIX := [["taxi_sn", 24], ["p405", 14], ["car_rapide_3d", 10], ["clando", 8], ["ndiaga", 6], ["sedan_3d", 9],
+	["wagon_3d", 7], ["jakarta", 7], ["jetta", 4], ["crafter", 3], ["taxi", 4], ["car", 4]]
+var _vehicle_used := {}
+
+
 func _pick_vehicle() -> String:
-	var r := rng.randf()
-	if r < 0.4:
-		return "taxi"
-	if r < 0.5:
-		return "car_rapide"
-	if r < 0.57:
-		return "ndiaga"
-	return "car"
+	var total := 0
+	for e in VEHICLE_MIX:
+		total += e[1]
+	for attempt in 10:
+		var r := rng.randi() % total
+		for e in VEHICLE_MIX:
+			r -= e[1]
+			if r < 0:
+				var kind: String = e[0]
+				if Vehicles.MODELS.has(kind):
+					if not Vehicles.has_model(kind):
+						break   # modèle absent : on retire au sort
+					var mx: int = Vehicles.MODELS[kind].get("max", 100000)
+					if _vehicle_used.get(kind, 0) >= mx:
+						break
+				_vehicle_used[kind] = _vehicle_used.get(kind, 0) + 1
+				return kind
+	return ["taxi", "car", "car_rapide", "ndiaga"][rng.randi() % 4]
 
 
 func _link(a: int, b: int) -> void:
@@ -722,8 +738,9 @@ func _build_props() -> void:
 		var node := Vehicles.make(v[2], vrng)
 		node.position = v[0]
 		node.rotation.y = v[1]
-		for mi in node.find_children("*", "GeometryInstance3D", true, false):
-			mi.visibility_range_end = 260.0
+		if not Vehicles.MODELS.has(v[2]):
+			for mi in node.find_children("*", "GeometryInstance3D", true, false):
+				mi.visibility_range_end = 260.0
 		var body := StaticBody3D.new()
 		body.collision_layer = 1
 		var cs := CollisionShape3D.new()

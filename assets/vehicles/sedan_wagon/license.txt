@@ -1,0 +1,11 @@
+Model Information:
+* title:	Lowpoly Sedan & Wagon
+* source:	https://sketchfab.com/3d-models/lowpoly-sedan-wagon-e11a46478c674b279fe9d299b2125c30
+* author:	Han66st (https://sketchfab.com/Han66st)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Lowpoly Sedan & Wagon" (https://sketchfab.com/3d-models/lowpoly-sedan-wagon-e11a46478c674b279fe9d299b2125c30) by Han66st (https://sketchfab.com/Han66st) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

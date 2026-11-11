@@ -10,7 +10,82 @@ extends RefCounted
 static var _mats := {}
 
 
+## Vrais modèles 3D (Sketchfab, voir assets/CREDITS.md). « keep » : objets à garder dans le fichier,
+## « length » : longueur réelle en mètres, « max » : nombre maximum dans la ville (modèles lourds).
+const MODELS := {
+	"taxi_sn": {"path": "res://assets/vehicles/taxi_senegal/scene.gltf", "keep": ["Cube"], "length": 4.4},
+	"jakarta": {"path": "res://assets/vehicles/taxi_senegal/scene.gltf", "keep": ["Piaggio SI", "Piaggio SI_001", "Piaggio SI_002"], "length": 1.85},
+	"car_rapide_3d": {"path": "res://assets/vehicles/car_rapide/scene.gltf", "length": 5.0},
+	"clando": {"path": "res://assets/vehicles/clando/scene.gltf", "length": 3.7},
+	"sedan_3d": {"path": "res://assets/vehicles/sedan_wagon/scene.gltf", "keep": ["body_sedan_9"], "length": 4.4},
+	"wagon_3d": {"path": "res://assets/vehicles/sedan_wagon/scene.gltf", "keep": ["body_wagon_4"], "length": 4.5},
+	"p405": {"path": "res://assets/vehicles/peugeot_405/scene.gltf", "keep": ["P_405_sedan"], "length": 4.4},
+	"jetta": {"path": "res://assets/vehicles/standard/jetta/scene.gltf", "length": 4.76, "max": 8},
+	"crafter": {"path": "res://assets/vehicles/standard/crafter/scene.gltf", "length": 5.6, "max": 4},
+}
+static var _scenes := {}
+static var _model_sizes := {}
+
+
+static func has_model(kind: String) -> bool:
+	return MODELS.has(kind) and ResourceLoader.exists(MODELS[kind].path)
+
+
+## Charge un vrai modèle, ne garde que le véhicule voulu, l'oriente le long de X,
+## le met à sa taille réelle, roues au sol et centré.
+static func make_model(kind: String) -> Node3D:
+	var info: Dictionary = MODELS[kind]
+	if not _scenes.has(info.path):
+		_scenes[info.path] = load(info.path)
+	var inst: Node3D = _scenes[info.path].instantiate()
+	for ap in inst.find_children("*", "AnimationPlayer", true, false):
+		ap.queue_free()
+	if info.has("keep"):
+		var lvl: Node = inst
+		while lvl.get_child_count() == 1:
+			lvl = lvl.get_child(0)
+		for c in lvl.get_children():
+			if not (str(c.name) in info.keep):
+				lvl.remove_child(c)
+				c.free()
+	var b := _bounds(inst)
+	var model := Node3D.new()
+	model.add_child(inst)
+	var basis := Basis()
+	if b.size.z > b.size.x:
+		basis = Basis(Vector3.UP, PI / 2.0)   # axe long Z → X
+	var length := maxf(b.size.x, b.size.z)
+	var sc: float = info.length / maxf(length, 0.001)
+	inst.transform = Transform3D(basis.scaled(Vector3.ONE * sc), Vector3.ZERO)
+	var nb := inst.transform * b
+	inst.position -= Vector3(nb.get_center().x, nb.position.y, nb.get_center().z)
+	_model_sizes[kind] = Vector3(nb.size.x, nb.size.y, nb.size.z)
+	var root := Node3D.new()
+	root.name = kind
+	root.add_child(model)
+	for gi in root.find_children("*", "GeometryInstance3D", true, false):
+		gi.visibility_range_end = 160.0 if info.has("max") else 260.0
+	return root
+
+
+static func _bounds(top: Node3D) -> AABB:
+	var out := AABB()
+	var first := true
+	for mi: MeshInstance3D in top.find_children("*", "MeshInstance3D", true, false):
+		var t := Transform3D()
+		var node: Node = mi
+		while node != top:
+			t = (node as Node3D).transform * t
+			node = node.get_parent()
+		var bb := t * mi.get_aabb()
+		out = bb if first else out.merge(bb)
+		first = false
+	return out
+
+
 static func make(kind: String, rng: RandomNumberGenerator) -> Node3D:
+	if has_model(kind):
+		return make_model(kind)
 	var root := Node3D.new()
 	root.name = kind
 	match kind:
@@ -28,6 +103,12 @@ static func make(kind: String, rng: RandomNumberGenerator) -> Node3D:
 
 ## Taille de la boîte de collision (longueur, hauteur, largeur).
 static func size_of(kind: String) -> Vector3:
+	if _model_sizes.has(kind):
+		var sz: Vector3 = _model_sizes[kind]
+		return Vector3(maxf(sz.x, sz.z), sz.y, minf(sz.x, sz.z))
+	if MODELS.has(kind):
+		var l: float = MODELS[kind].length
+		return Vector3(l, 1.6 if l < 5.0 else 2.5, 1.8 if l > 2.5 else 0.7)
 	match kind:
 		"car_rapide":
 			return Vector3(5.1, 2.5, 2.0)
