@@ -37,6 +37,8 @@ var skeleton: Skeleton3D
 var talking := false
 var driving := false      # assis au volant (animation « Driving »)
 var _action_time := 0.0   # animation ponctuelle en cours (tirer, tomber…)
+var gait := 1.0           # rythme de marche propre à chaque personne
+var formal_walk := false  # démarche posée (anciens, grands boubous)
 var _current := ""
 
 
@@ -52,6 +54,8 @@ func build(look: Dictionary) -> void:
 	inst.scale = Vector3.ONE * (h / 1.82)
 	add_child(inst)
 	skeleton = inst.find_children("*", "Skeleton3D", true, false)[0]
+
+	_natural_build(look, female)
 
 	anim = AnimationPlayer.new()
 	inst.add_child(anim)
@@ -88,7 +92,7 @@ func _get_library(sk: Skeleton3D) -> AnimationLibrary:
 	src.free()
 	for n in lib.get_animation_list():
 		var a := lib.get_animation(n)
-		if n in [ANIM_IDLE, ANIM_WALK, ANIM_RUN, ANIM_SPRINT, ANIM_TALK, "Sitting_Idle", "Crouch_Idle", "Jump", "Driving"]:
+		if n in [ANIM_IDLE, ANIM_WALK, ANIM_RUN, ANIM_SPRINT, ANIM_TALK, "Sitting_Idle", "Crouch_Idle", "Jump", "Driving", "Walk_Formal"]:
 			a.loop_mode = Animation.LOOP_LINEAR
 		for t in a.get_track_count():
 			if a.track_get_type(t) == Animation.TYPE_POSITION_3D and str(a.track_get_path(t)).ends_with(":pelvis"):
@@ -96,6 +100,31 @@ func _get_library(sk: Skeleton3D) -> AnimationLibrary:
 					a.track_set_key_value(t, k, a.track_get_key_value(t, k) * ratio)
 	_libraries[key] = lib
 	return lib
+
+
+## Morphologie plus naturelle : les modèles de base sont très musclés (« Superhero ») ;
+## on affine le torse, les bras et les cuisses en réduisant l'épaisseur des os
+## (les os sont orientés le long de leur axe Y : on ne touche pas à leur longueur).
+## « build » : 0.9 = mince, 1.0 = normal, 1.1 = fort.
+func _natural_build(look: Dictionary, female: bool) -> void:
+	var b: float = look.get("build", randf_range(0.93, 1.08))
+	var torso := (0.84 if not female else 0.9) * b
+	var arms := (0.8 if not female else 0.86) * lerpf(1.0, b, 0.6)
+	var legs := (0.9 if not female else 0.95) * lerpf(1.0, b, 0.5)
+	_bone_thickness("spine_02", torso)
+	_bone_thickness("neck_01", 1.0 / torso)   # la tête garde sa forme
+	_bone_thickness("upperarm_l", arms)
+	_bone_thickness("upperarm_r", arms)
+	_bone_thickness("thigh_l", legs)
+	_bone_thickness("thigh_r", legs)
+	gait = look.get("gait", randf_range(0.9, 1.1))
+	formal_walk = look.get("style", "") == "boubou" or look.get("formal", false)
+
+
+func _bone_thickness(bone_name: String, k: float) -> void:
+	var i := skeleton.find_bone(bone_name)
+	if i >= 0:
+		skeleton.set_bone_pose_scale(i, Vector3(k, 1.0, k))
 
 
 ## speed : vitesse horizontale en m/s.
@@ -116,8 +145,8 @@ func play_state(speed: float, airborne := false) -> void:
 		target = ANIM_RUN
 		scale = clampf(speed / RUN_REF_SPEED, 0.7, 1.4)
 	elif speed > 0.15:
-		target = ANIM_WALK
-		scale = clampf(speed / WALK_REF_SPEED, 0.5, 1.5)
+		target = "Walk_Formal" if formal_walk and anim.has_animation("Walk_Formal") else ANIM_WALK
+		scale = clampf(speed / WALK_REF_SPEED, 0.5, 1.5) * gait
 	elif talking:
 		target = ANIM_TALK
 	if target != _current and anim.has_animation(target):
@@ -156,7 +185,8 @@ func _dress(mi: MeshInstance3D, look: Dictionary, female: bool) -> void:
 	var top: Color = look.get("top", Color("f0b93a"))
 	m.set_shader_parameter("top_color", top)
 	m.set_shader_parameter("bottom_color", _drape_color(look) if style == "dress" else look.get("bottom", Color("2b3a55")))
-	m.set_shader_parameter("shoe_color", look.get("shoes", Color("1a1a1a")))
+	m.set_shader_parameter("shoe_color", look.get("shoes", [Color("3b2a1e"), Color("5a3d28"), Color("1a1a1a"), Color("2b2b2b"), Color("7a5a3a")].pick_random()))
+	m.set_shader_parameter("sandals", 1.0 if look.get("sandals", randf() < 0.45) else 0.0)
 	m.set_shader_parameter("skin_tint", look.get("skin_tint", SKIN_TONES.pick_random()))
 	m.set_shader_parameter("pattern", 1.0 if look.get("wax", false) else 0.0)
 	m.set_shader_parameter("pattern_color", look.get("pattern_color", Color("f1c40f")))
@@ -221,11 +251,11 @@ func _add_drape(look: Dictionary) -> void:
 	else:
 		# grand boubou : tombe des épaules jusqu'aux mollets, ample, couvre les bras
 		var shoulders := 0.8 * 1.82
-		_drape_cone("spine_03", 0.3, 0.62, 0.32, shoulders, 0.72, mat)
+		_drape_cone("spine_03", 0.24, 0.47, 0.34, shoulders - 0.02, 0.62, mat)
 		# encolure brodée
 		var collar := StandardMaterial3D.new()
 		collar.albedo_color = mat.albedo_color.darkened(0.25) if not look.get("wax", false) else Color("f1c40f")
-		_drape_cone("spine_03", 0.13, 0.31, shoulders - 0.04, shoulders + 0.03, 0.72, collar)
+		_drape_cone("spine_03", 0.11, 0.25, shoulders - 0.05, shoulders + 0.01, 0.62, collar)
 		# bonnet (kufi)
 		var head := skeleton.find_bone("Head")
 		if head >= 0:
