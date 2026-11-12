@@ -176,79 +176,45 @@ func _carjack(player) -> void:
 	var left := -global_transform.basis.z.normalized()
 	var fwd := forward()
 	var seat_world := global_transform * seat_position()
-	# le joueur se place devant la portière, face à la voiture
-	var door_spot := seat_world + left * (size.z * 0.28 + 0.75)
-	door_spot.y = global_position.y + 0.2
-	player.global_position = door_spot
-	var to_car := seat_world - door_spot
-	player.model.rotation.y = atan2(-to_car.x, -to_car.z)
-	# caméra derrière le joueur, tournée vers la portière : la scène est bien visible
-	player.yaw = player.model.rotation.y + 0.35
-	player.pitch = -0.16
-	player.spring.spring_length = 3.4
-	player._cam_free = 3.0
-	player.model.play_action("Interact", 1.4)
-	# portière qui s'ouvre : tôle de la couleur de la carrosserie + vitre
-	var door := Node3D.new()
-	add_child(door)
-	var door_w := minf(1.1, size.x * 0.28)
-	var sill := 0.3                       # bas de caisse
-	var belt := size.y * 0.62             # ligne de ceinture (bas des vitres)
-	var top := size.y * 0.9
-	var bm := BoxMesh.new()
-	bm.size = Vector3(door_w, belt - sill, 0.06)
-	var panel := MeshInstance3D.new()
-	panel.mesh = bm
-	var dm := StandardMaterial3D.new()
-	dm.albedo_color = Vehicles.paint_of(kind)
-	dm.metallic = 0.4
-	dm.roughness = 0.35
-	panel.material_override = dm
-	panel.position = Vector3(-door_w * 0.5, (sill + belt) * 0.5, 0)
-	door.add_child(panel)
-	var gm := BoxMesh.new()
-	gm.size = Vector3(door_w * 0.85, top - belt, 0.03)
-	var glass := MeshInstance3D.new()
-	glass.mesh = gm
-	glass.material_override = Vehicles.glass_material()
-	glass.position = Vector3(-door_w * 0.5, (belt + top) * 0.5, 0)
-	door.add_child(glass)
-	var hinge := Vector3(seat_position().x + door_w * 0.5, 0.0, -size.z * 0.5)
-	var open_door := func(a: float):
-		door.transform = Transform3D(Basis(Vector3.UP, a), hinge)
-	open_door.call(0.0)
-	var tw := create_tween()
-	tw.tween_method(open_door, 0.0, -1.15, 0.35)
-	await get_tree().create_timer(0.45).timeout
-	# on regarde le conducteur, mains sur le volant : la caméra se cadre sur lui
-	player.spring.spring_length = 3.2
-	var to_seat: Vector3 = seat_world - player.global_position
-	player.yaw = atan2(-to_seat.x, -to_seat.z) + 0.75   # de côté : on voit la portière et le conducteur
+	# le joueur se place à côté de l'ouverture (un peu en arrière), face au conducteur
+	var stand := seat_world + left * (size.z * 0.5 + 0.55) - fwd * 0.45
+	stand.y = global_position.y + 0.2
+	player.global_position = stand
+	var to_seat := seat_world - stand
+	player.model.rotation.y = atan2(-to_seat.x, -to_seat.z)
+	# caméra fixe pour toute la scène : de trois quarts arrière, on voit le joueur et le conducteur
+	player.yaw = atan2(-to_seat.x, -to_seat.z) + 0.7
 	player.pitch = -0.2
-	player._cam_free = 3.0
+	player.spring.spring_length = 3.6
+	player._cam_free = 30.0
+	# 1. il ouvre la portière et regarde le conducteur, figé, mains sur le volant
+	player.model.play_action("Interact", 1.2)
 	if driver_model and driver_model.real:
-		driver_model.real.anim.speed_scale = 0.0   # figé, les mains sur le volant
-	await get_tree().create_timer(0.9).timeout
-	# on le tire hors de la voiture : il est entraîné vers le joueur
-	var out_local := seat_position() + Vector3(-0.4, -seat_position().y + 0.02, -(size.z * 0.5 + 1.7))
+		driver_model.real.anim.speed_scale = 0.0
+	await get_tree().create_timer(1.1).timeout
+	var ground_local := seat_position() + Vector3(-0.3, -seat_position().y + 0.03, -(size.z * 0.5 + 0.9))
 	if driver_model:
-		player.model.play_action("Push", 0.9)
+		# 2. il le tire : le conducteur, encore assis, est arraché latéralement hors du siège
+		player.model.play_action("Push", 0.8)
+		driver_model.real.anim.speed_scale = 1.0
+		var edge_local := seat_position() + Vector3(0, 0.05, -(size.z * 0.5 + 0.15))
+		var tw := create_tween()
+		tw.tween_property(driver_model, "position", edge_local, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(driver_model, "rotation:y", -PI / 2.0 + 0.9, 0.4)
+		await tw.finished
+		# 3. il tombe au sol juste devant la portière
 		driver_model.set_driving(false)
-		driver_model.play_action("Hit_Chest", 1.2)
-		var door_local := seat_position() + Vector3(0, 0.1, -(size.z * 0.5 + 0.4))
+		var fall: float = driver_model.play_action("Death01", 1.4)
 		var tw2 := create_tween()
-		# arraché du siège jusqu'à la portière…
-		tw2.tween_property(driver_model, "position", door_local, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw2.parallel().tween_property(driver_model, "rotation:y", PI / 2.0, 0.35)
-		await tw2.finished
-		# …puis projeté au sol
-		driver_model.play_action("Death01", 1.3)
-		var tw3 := create_tween()
-		tw3.tween_property(driver_model, "position", out_local, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		await tw3.finished
-		# il reste au sol un instant, puis se relève
-		await get_tree().create_timer(0.9).timeout
-	# il se relève et s'enfuit (il devient un passant)
+		tw2.tween_property(driver_model, "position", ground_local, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		await get_tree().create_timer(fall + 0.6).timeout
+		# 4. il se relève (la chute jouée à l'envers)
+		if driver_model.real and driver_model.real.anim.has_animation("Death01"):
+			driver_model.real.anim.play_backwards("Death01")
+			driver_model.real.anim.speed_scale = 1.6
+			driver_model.real._action_time = driver_model.real.anim.get_animation("Death01").length / 1.6
+			await get_tree().create_timer(driver_model.real._action_time).timeout
+	# 5. il s'enfuit en criant (il devient un passant)
 	if traffic and traffic.city:
 		var Pedestrian = load("res://scripts/characters/pedestrian.gd")
 		var ped = Pedestrian.new()
@@ -257,16 +223,13 @@ func _carjack(player) -> void:
 		var node: int = city.random_sidewalk_node_near(global_position, 40.0) if city.has_method("random_sidewalk_node_near") else city.random_sidewalk_node()
 		var look: Dictionary = driver_look if not driver_look.is_empty() else {"top": Color("2c3e50")}
 		ped.setup(city, node, look)
-		ped.global_position = global_transform * out_local + Vector3(0, 0.2, 0)
+		ped.global_position = global_transform * ground_local + Vector3(0, 0.2, 0)
 		ped.flee_from(player.global_position, 7.0)
 		ped.say(DRIVER_SHOUTS.pick_random(), 3.0)
 	if driver_model:
 		driver_model.queue_free()
 		driver_model = null
-	var tw4 := create_tween()
-	tw4.tween_method(open_door, -1.15, 0.0, 0.3)
-	await tw4.finished
-	door.queue_free()
+	player._cam_free = 0.0
 	player.controls_locked = false
 	_taking = false
 	player.enter_vehicle(self)
