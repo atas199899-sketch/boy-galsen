@@ -341,7 +341,7 @@ func _drivetest() -> void:
 		var target = traffic.cars[0]
 		player.global_position = target.global_position - target.global_transform.basis.z * (target.size.z * 0.5 + 1.0) + Vector3(0, 0.5, 0)
 		target.interact(player)
-		await get_tree().create_timer(4.5).timeout
+		await get_tree().create_timer(6.0).timeout
 		jacked = player.vehicle == target and target.ai == null
 		for p in get_tree().get_nodes_in_group("pedestrian"):
 			if p.flee_time > 0.0:

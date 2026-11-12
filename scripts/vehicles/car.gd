@@ -69,14 +69,18 @@ func _fit_driver() -> void:
 	if head < 0:
 		return
 	var head_top := (global_transform.affine_inverse() * (sk.global_transform * sk.get_bone_global_pose(head))).origin.y + 0.16
-	var roof := size.y - 0.14
+	var roof := size.y - 0.05
 	if head_top > roof:
-		driver_model.position.y -= minf(head_top - roof, 0.45)
+		driver_model.position.y -= minf(head_top - roof, 0.3)
 
 
 ## Place du conducteur, en fraction de la longueur (x), hauteur du siège (y), fraction de la largeur (z).
 ## Côté gauche (-Z) : on roule à droite au Sénégal.
 const SEATS := {
+	"taxi_sn": [0.0, 0.3, -0.22],
+	"p405": [0.0, 0.3, -0.22],
+	"sedan_3d": [0.0, 0.28, -0.22],
+	"wagon_3d": [0.0, 0.28, -0.22],
 	"jakarta": [-0.1, 0.35, 0.0],
 	"clando": [0.13, 0.06, -0.22],         # cabine à l'avant, caisse derrière
 	"car_rapide_3d": [0.33, 0.45, -0.24],
@@ -188,9 +192,11 @@ func _carjack(player) -> void:
 	var door := Node3D.new()
 	add_child(door)
 	var door_w := minf(1.1, size.x * 0.28)
-	var door_h := size.y * 0.55
+	var sill := 0.3                       # bas de caisse
+	var belt := size.y * 0.62             # ligne de ceinture (bas des vitres)
+	var top := size.y * 0.9
 	var bm := BoxMesh.new()
-	bm.size = Vector3(door_w, door_h * 0.55, 0.06)
+	bm.size = Vector3(door_w, belt - sill, 0.06)
 	var panel := MeshInstance3D.new()
 	panel.mesh = bm
 	var dm := StandardMaterial3D.new()
@@ -198,16 +204,16 @@ func _carjack(player) -> void:
 	dm.metallic = 0.4
 	dm.roughness = 0.35
 	panel.material_override = dm
-	panel.position = Vector3(-door_w * 0.5, -door_h * 0.2, 0)
+	panel.position = Vector3(-door_w * 0.5, (sill + belt) * 0.5, 0)
 	door.add_child(panel)
 	var gm := BoxMesh.new()
-	gm.size = Vector3(door_w * 0.9, door_h * 0.42, 0.03)
+	gm.size = Vector3(door_w * 0.85, top - belt, 0.03)
 	var glass := MeshInstance3D.new()
 	glass.mesh = gm
 	glass.material_override = Vehicles.glass_material()
-	glass.position = Vector3(-door_w * 0.5, door_h * 0.3, 0)
+	glass.position = Vector3(-door_w * 0.5, (belt + top) * 0.5, 0)
 	door.add_child(glass)
-	var hinge := Vector3(seat_position().x + door_w * 0.5, size.y * 0.5, -size.z * 0.5)
+	var hinge := Vector3(seat_position().x + door_w * 0.5, 0.0, -size.z * 0.5)
 	var open_door := func(a: float):
 		door.transform = Transform3D(Basis(Vector3.UP, a), hinge)
 	open_door.call(0.0)
@@ -224,18 +230,24 @@ func _carjack(player) -> void:
 		driver_model.real.anim.speed_scale = 0.0   # figé, les mains sur le volant
 	await get_tree().create_timer(0.9).timeout
 	# on le tire hors de la voiture : il est entraîné vers le joueur
-	var out_local := seat_position() + Vector3(0, -seat_position().y + 0.05, -(size.z * 0.5 + 1.1))
+	var out_local := seat_position() + Vector3(-0.4, -seat_position().y + 0.02, -(size.z * 0.5 + 1.7))
 	if driver_model:
-		player.model.play_action("Push", 1.0)
+		player.model.play_action("Push", 0.9)
 		driver_model.set_driving(false)
-		driver_model.play_action("Hit_Chest", 0.9)
+		driver_model.play_action("Hit_Chest", 1.2)
+		var door_local := seat_position() + Vector3(0, 0.1, -(size.z * 0.5 + 0.4))
 		var tw2 := create_tween()
-		tw2.tween_property(driver_model, "position", out_local + Vector3(0, 0.35, 0), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		# arraché du siège jusqu'à la portière…
+		tw2.tween_property(driver_model, "position", door_local, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tw2.parallel().tween_property(driver_model, "rotation:y", PI / 2.0, 0.35)
-		tw2.tween_property(driver_model, "position", out_local, 0.25).set_trans(Tween.TRANS_BOUNCE)
 		await tw2.finished
-		# il se relève…
-		await get_tree().create_timer(0.45).timeout
+		# …puis projeté au sol
+		driver_model.play_action("Death01", 1.3)
+		var tw3 := create_tween()
+		tw3.tween_property(driver_model, "position", out_local, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		await tw3.finished
+		# il reste au sol un instant, puis se relève
+		await get_tree().create_timer(0.9).timeout
 	# il se relève et s'enfuit (il devient un passant)
 	if traffic and traffic.city:
 		var Pedestrian = load("res://scripts/characters/pedestrian.gd")
@@ -251,9 +263,9 @@ func _carjack(player) -> void:
 	if driver_model:
 		driver_model.queue_free()
 		driver_model = null
-	var tw3 := create_tween()
-	tw3.tween_method(open_door, -1.15, 0.0, 0.3)
-	await tw3.finished
+	var tw4 := create_tween()
+	tw4.tween_method(open_door, -1.15, 0.0, 0.3)
+	await tw4.finished
 	door.queue_free()
 	player.controls_locked = false
 	_taking = false
