@@ -192,21 +192,23 @@ func _carjack(player) -> void:
 	if driver_model and driver_model.real:
 		driver_model.real.anim.speed_scale = 0.0
 	await get_tree().create_timer(1.1).timeout
-	var ground_local := seat_position() + Vector3(-0.3, -seat_position().y + 0.03, -(size.z * 0.5 + 0.9))
+	# point de chute : bien à l'écart de la carrosserie et des roues
+	var ground_local := seat_position() + Vector3(-0.2, -seat_position().y + 0.03, -(size.z * 0.5 + 1.0))
 	if driver_model:
 		# 2. il le tire : le conducteur, encore assis, est arraché latéralement hors du siège
 		player.model.play_action("Push", 0.8)
 		driver_model.real.anim.speed_scale = 1.0
-		var edge_local := seat_position() + Vector3(0, 0.05, -(size.z * 0.5 + 0.15))
+		# il glisse hors du siège en restant à la même hauteur (sa tête reste sous le toit)
+		var edge_local: Vector3 = driver_model.position + Vector3(0, 0, -(size.z * 0.5 + 0.35) - driver_model.position.z)
 		var tw := create_tween()
-		tw.tween_property(driver_model, "position", edge_local, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.parallel().tween_property(driver_model, "rotation:y", -PI / 2.0 + 0.9, 0.4)
+		tw.tween_property(driver_model, "position", edge_local, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(driver_model, "rotation:y", PI, 0.45)   # face à la voiture
 		await tw.finished
-		# 3. il tombe au sol juste devant la portière
+		# 3. il tombe à la renverse, en s'éloignant de la voiture
 		driver_model.set_driving(false)
 		var fall: float = driver_model.play_action("Death01", 1.4)
 		var tw2 := create_tween()
-		tw2.tween_property(driver_model, "position", ground_local, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw2.tween_property(driver_model, "position", ground_local, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		await get_tree().create_timer(fall + 0.6).timeout
 		# 4. il se relève (la chute jouée à l'envers)
 		if driver_model.real and driver_model.real.anim.has_animation("Death01"):

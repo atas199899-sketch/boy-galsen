@@ -85,6 +85,7 @@ func _ready() -> void:
 var _capture_path := ""
 var _capture_frames := 0
 var _capture_at := 150
+var _capture_list: Array[int] = []
 
 
 func _parse_dev_args() -> void:
@@ -95,6 +96,10 @@ func _parse_dev_args() -> void:
 			_capture_path = a.get_slice("=", 1)
 		elif a.begins_with("--capframe="):
 			_capture_at = int(a.get_slice("=", 1))
+		elif a.begins_with("--capframes="):
+			# plusieurs captures dans la même exécution : --capframes=500,540,580
+			for f in a.get_slice("=", 1).split(","):
+				_capture_list.append(int(f))
 		elif a.begins_with("--yaw="):
 			player.yaw = float(a.get_slice("=", 1))
 		elif a == "--debughair":
@@ -162,7 +167,13 @@ func _physics_process(_delta: float) -> void:
 	if _capture_path == "":
 		return
 	_capture_frames += 1
-	if _capture_frames == _capture_at:
+	if _capture_frames in _capture_list:
+		var img_multi := get_viewport().get_texture().get_image()
+		img_multi.save_png(ProjectSettings.globalize_path(_capture_path.get_basename() + "_%d.png" % _capture_frames))
+		if _capture_frames == _capture_list.max():
+			get_tree().quit()
+		return
+	if _capture_list.is_empty() and _capture_frames == _capture_at:
 		var img := get_viewport().get_texture().get_image()
 		img.save_png(ProjectSettings.globalize_path(_capture_path))
 		print("Capture : ", _capture_path)
