@@ -57,12 +57,21 @@ func add_driver(look: Dictionary) -> void:
 	driver_look = look
 
 
+## Place du conducteur, en fraction de la longueur (x), hauteur du siège (y), fraction de la largeur (z).
+## Côté gauche (-Z) : on roule à droite au Sénégal.
+const SEATS := {
+	"jakarta": [-0.1, 0.35, 0.0],
+	"clando": [0.13, 0.06, -0.22],         # cabine à l'avant, caisse derrière
+	"car_rapide_3d": [0.33, 0.45, -0.24],
+	"car_rapide": [0.33, 0.45, -0.24],
+	"ndiaga": [0.36, 0.5, -0.24],
+	"crafter": [0.3, 0.42, -0.24],
+}
+
+
 func seat_position() -> Vector3:
-	if kind == "jakarta":
-		return Vector3(-0.2, 0.35, 0.0)
-	if size.x > 4.9:
-		return Vector3(size.x * 0.33, 0.45, -size.z * 0.24)   # minibus : cabine à l'avant
-	return Vector3(size.x * 0.02, 0.22, -size.z * 0.22)
+	var st: Array = SEATS.get(kind, [0.0, 0.14, -0.22])
+	return Vector3(size.x * st[0], st[1], size.z * st[2])
 
 
 func setup(p_kind: String, model: Node3D, p_size: Vector3) -> void:

@@ -115,6 +115,21 @@ func _parse_dev_args() -> void:
 					var to: Vector3 = v[0] - player.global_position
 					player.yaw = atan2(-to.x, -to.z)
 					break
+		elif a == "--carshow":
+			# aligne des véhicules avec conducteur devant le joueur (captures d'écran)
+			var Car = load("res://scripts/vehicles/car.gd")
+			var V = load("res://scripts/world/vehicles.gd")
+			var rng := RandomNumberGenerator.new()
+			var kinds := ["clando", "taxi_sn", "car_rapide_3d", "p405"]
+			var f := Vector3(sin(player.yaw), 0, cos(player.yaw)) * -1.0
+			var side := Vector3(f.z, 0, -f.x)
+			for i in kinds.size():
+				var c = Car.new()
+				c.setup(kinds[i], V.make(kinds[i], rng), V.size_of(kinds[i]))
+				add_child(c)
+				c.global_position = player.global_position + f * (8.0 + i * 3.2) + side * 0.0 + Vector3(0, 0.3, 0)
+				c.rotation.y = atan2(-side.z, side.x)
+				c.add_driver({"top": Color("2c3e50"), "hair": "Hair_Buzzed"})
 		elif a == "--nossao":
 			env.ssao_enabled = false
 		elif a == "--noglow":
