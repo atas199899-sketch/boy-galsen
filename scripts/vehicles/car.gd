@@ -184,19 +184,32 @@ func _carjack(player) -> void:
 	player.spring.spring_length = 3.4
 	player._cam_free = 3.0
 	player.model.play_action("Interact", 1.4)
-	# portière qui s'ouvre
-	var door := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(minf(1.1, size.x * 0.28), size.y * 0.5, 0.06)
-	door.mesh = bm
-	var dm := StandardMaterial3D.new()
-	dm.albedo_color = Color(0.12, 0.14, 0.17)
-	dm.metallic = 0.5
-	door.material_override = dm
+	# portière qui s'ouvre : tôle de la couleur de la carrosserie + vitre
+	var door := Node3D.new()
 	add_child(door)
-	var hinge := Vector3(seat_position().x + bm.size.x * 0.5, size.y * 0.45, -size.z * 0.5)
+	var door_w := minf(1.1, size.x * 0.28)
+	var door_h := size.y * 0.55
+	var bm := BoxMesh.new()
+	bm.size = Vector3(door_w, door_h * 0.55, 0.06)
+	var panel := MeshInstance3D.new()
+	panel.mesh = bm
+	var dm := StandardMaterial3D.new()
+	dm.albedo_color = Vehicles.paint_of(kind)
+	dm.metallic = 0.4
+	dm.roughness = 0.35
+	panel.material_override = dm
+	panel.position = Vector3(-door_w * 0.5, -door_h * 0.2, 0)
+	door.add_child(panel)
+	var gm := BoxMesh.new()
+	gm.size = Vector3(door_w * 0.9, door_h * 0.42, 0.03)
+	var glass := MeshInstance3D.new()
+	glass.mesh = gm
+	glass.material_override = Vehicles.glass_material()
+	glass.position = Vector3(-door_w * 0.5, door_h * 0.3, 0)
+	door.add_child(glass)
+	var hinge := Vector3(seat_position().x + door_w * 0.5, size.y * 0.5, -size.z * 0.5)
 	var open_door := func(a: float):
-		door.transform = Transform3D(Basis(Vector3.UP, a), hinge) * Transform3D(Basis(), Vector3(-bm.size.x * 0.5, 0, 0))
+		door.transform = Transform3D(Basis(Vector3.UP, a), hinge)
 	open_door.call(0.0)
 	var tw := create_tween()
 	tw.tween_method(open_door, 0.0, -1.15, 0.35)

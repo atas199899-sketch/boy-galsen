@@ -13,18 +13,39 @@ static var _mats := {}
 ## Vrais modèles 3D (Sketchfab, voir assets/CREDITS.md). « keep » : objets à garder dans le fichier,
 ## « length » : longueur réelle en mètres, « max » : nombre maximum dans la ville (modèles lourds).
 const MODELS := {
-	"taxi_sn": {"path": "res://assets/vehicles/taxi_senegal/scene.gltf", "keep": ["Cube"], "length": 4.4},
+	"taxi_sn": {"path": "res://assets/vehicles/taxi_senegal/scene.gltf", "keep": ["Cube"], "length": 4.4, "glass": ["Material.003"], "paint": Color(0.95, 0.72, 0.08)},
 	"jakarta": {"path": "res://assets/vehicles/taxi_senegal/scene.gltf", "keep": ["Piaggio SI", "Piaggio SI_001", "Piaggio SI_002"], "length": 1.85},
-	"car_rapide_3d": {"path": "res://assets/vehicles/car_rapide/scene.gltf", "length": 5.0},
-	"clando": {"path": "res://assets/vehicles/clando/scene.gltf", "length": 3.7},
-	"sedan_3d": {"path": "res://assets/vehicles/sedan_wagon/scene.gltf", "keep": ["body_sedan_9"], "length": 4.4},
-	"wagon_3d": {"path": "res://assets/vehicles/sedan_wagon/scene.gltf", "keep": ["body_wagon_4"], "length": 4.5},
-	"p405": {"path": "res://assets/vehicles/peugeot_405/scene.gltf", "keep": ["P_405_sedan"], "length": 4.4},
+	"car_rapide_3d": {"path": "res://assets/vehicles/car_rapide/scene.gltf", "length": 5.0, "paint": Color(0.2, 0.35, 0.75)},
+	"clando": {"path": "res://assets/vehicles/clando/scene.gltf", "length": 3.7, "paint": Color(0.9, 0.9, 0.88)},
+	"sedan_3d": {"path": "res://assets/vehicles/sedan_wagon/scene.gltf", "keep": ["body_sedan_9"], "length": 4.4, "glass": ["windows.001"], "paint": Color(0.7, 0.05, 0.05)},
+	"wagon_3d": {"path": "res://assets/vehicles/sedan_wagon/scene.gltf", "keep": ["body_wagon_4"], "length": 4.5, "glass": ["windows.001"], "paint": Color(0.85, 0.85, 0.85)},
+	"p405": {"path": "res://assets/vehicles/peugeot_405/scene.gltf", "keep": ["P_405_sedan"], "length": 4.4, "paint": Color(0.1, 0.15, 0.45)},
 	"jetta": {"path": "res://assets/vehicles/standard/jetta/scene.gltf", "length": 4.76, "max": 8},
 	"crafter": {"path": "res://assets/vehicles/standard/crafter/scene.gltf", "length": 5.6, "max": 4},
 }
 static var _scenes := {}
 static var _model_sizes := {}
+
+
+static var _glass: StandardMaterial3D
+
+
+static func glass_material() -> StandardMaterial3D:
+	if _glass == null:
+		_glass = StandardMaterial3D.new()
+		_glass.albedo_color = Color(0.12, 0.16, 0.2, 0.32)
+		_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_glass.metallic = 0.6
+		_glass.roughness = 0.05
+		_glass.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return _glass
+
+
+## Couleur principale de la carrosserie (pour la portière ouverte, etc.).
+static func paint_of(kind: String) -> Color:
+	if MODELS.has(kind) and MODELS[kind].has("paint"):
+		return MODELS[kind].paint
+	return {"taxi": Color("f2c230"), "car_rapide": Color("1d4f9c"), "ndiaga": Color("f2f1ec")}.get(kind, Color(0.6, 0.6, 0.62))
 
 
 static func has_model(kind: String) -> bool:
@@ -65,6 +86,13 @@ static func make_model(kind: String) -> Node3D:
 	root.add_child(model)
 	for gi in root.find_children("*", "GeometryInstance3D", true, false):
 		gi.visibility_range_end = 160.0 if info.has("max") else 260.0
+	# vitres opaques dans certains modèles : on les remplace par du verre teinté transparent
+	if info.has("glass"):
+		for mi: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+			for k in mi.mesh.get_surface_count():
+				var m := mi.mesh.surface_get_material(k)
+				if m and m.resource_name in info.glass:
+					mi.set_surface_override_material(k, glass_material())
 	return root
 
 
