@@ -55,6 +55,23 @@ func add_driver(look: Dictionary) -> void:
 		gi.visibility_range_end = 90.0
 	driver_model = h
 	driver_look = look
+	_fit_driver.call_deferred()
+
+
+## Après application de la pose de conduite, abaisse le conducteur si sa tête dépasse du toit.
+func _fit_driver() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if driver_model == null or driver_model.real == null:
+		return
+	var sk: Skeleton3D = driver_model.real.skeleton
+	var head := sk.find_bone("Head")
+	if head < 0:
+		return
+	var head_top := (global_transform.affine_inverse() * (sk.global_transform * sk.get_bone_global_pose(head))).origin.y + 0.16
+	var roof := size.y - 0.14
+	if head_top > roof:
+		driver_model.position.y -= minf(head_top - roof, 0.45)
 
 
 ## Place du conducteur, en fraction de la longueur (x), hauteur du siège (y), fraction de la largeur (z).
@@ -184,17 +201,28 @@ func _carjack(player) -> void:
 	var tw := create_tween()
 	tw.tween_method(open_door, 0.0, -1.15, 0.35)
 	await get_tree().create_timer(0.45).timeout
-	# on tire le conducteur dehors
-	var out_local := seat_position() + Vector3(0, -seat_position().y + 0.05, -(size.z * 0.5 + 1.5))
+	# on regarde le conducteur, mains sur le volant : la caméra se cadre sur lui
+	player.spring.spring_length = 3.2
+	var to_seat: Vector3 = seat_world - player.global_position
+	player.yaw = atan2(-to_seat.x, -to_seat.z) + 0.75   # de côté : on voit la portière et le conducteur
+	player.pitch = -0.2
+	player._cam_free = 3.0
+	if driver_model and driver_model.real:
+		driver_model.real.anim.speed_scale = 0.0   # figé, les mains sur le volant
+	await get_tree().create_timer(0.9).timeout
+	# on le tire hors de la voiture : il est entraîné vers le joueur
+	var out_local := seat_position() + Vector3(0, -seat_position().y + 0.05, -(size.z * 0.5 + 1.1))
 	if driver_model:
-		player.model.play_action("Push", 1.2)
+		player.model.play_action("Push", 1.0)
 		driver_model.set_driving(false)
-		driver_model.play_action("Hit_Chest", 1.0)
+		driver_model.play_action("Hit_Chest", 0.9)
 		var tw2 := create_tween()
-		tw2.tween_property(driver_model, "position", out_local, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw2.parallel().tween_property(driver_model, "rotation:y", PI / 2.0, 0.55)
+		tw2.tween_property(driver_model, "position", out_local + Vector3(0, 0.35, 0), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw2.parallel().tween_property(driver_model, "rotation:y", PI / 2.0, 0.35)
+		tw2.tween_property(driver_model, "position", out_local, 0.25).set_trans(Tween.TRANS_BOUNCE)
 		await tw2.finished
-		await get_tree().create_timer(0.35).timeout
+		# il se relève…
+		await get_tree().create_timer(0.45).timeout
 	# il se relève et s'enfuit (il devient un passant)
 	if traffic and traffic.city:
 		var Pedestrian = load("res://scripts/characters/pedestrian.gd")
